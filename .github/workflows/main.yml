@@ -20,7 +20,7 @@ jobs:
         run: docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
         
       - name: Docker Build
-        run: docker build . --file Dockerfile --tag thversfelt/autorepair:$(date +%s)
+        run: docker build . --file Dockerfile --tag ${{secrets.DOCKER_USER}}/autorepair:latest
         
       - name: Docker Push
         run: docker push ${{secrets.DOCKER_USER}}/autorepair
