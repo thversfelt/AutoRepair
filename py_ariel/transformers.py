@@ -1,6 +1,7 @@
 import ast
 import random
 from typing import Any
+from py_ariel import utilities
 
 
 class Instrumenter(ast.NodeTransformer):
@@ -56,7 +57,8 @@ class ModifyMutator(ast.NodeTransformer):
 
     def change_threshold_value(self, node: ast.Compare) -> Any:
         constant = node.comparators[0]
-        constant.value = random.randint(-100, 100)
+        order_of_magnitude = utilities.order_of_magnitude(constant.value)
+        constant.value = random.gauss(constant.value, order_of_magnitude)
         return node
 
     def change_relational_direction(self, node: ast.Compare):

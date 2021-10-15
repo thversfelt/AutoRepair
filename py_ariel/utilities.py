@@ -1,3 +1,4 @@
+import math
 import random
 from typing import Dict, List
 
@@ -31,3 +32,10 @@ def dominates(one: List[float], other: List[float]) -> bool:
             return True  # The other does not dominate one, and one dominates at least one objectives of the other.
 
     return False  # The other does not dominate one, but one does not dominate any objective of the other.
+
+
+def order_of_magnitude(number: float) -> int:
+    if number == 0:
+        return 10
+    else:
+        return math.floor(math.log(abs(number), 10))
