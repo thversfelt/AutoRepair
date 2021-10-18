@@ -4,11 +4,11 @@ import inspect
 import random
 from typing import Callable, List, Tuple, Dict
 import astor
-from py_ariel import utilities, transformers
 import numpy as np
+from pyariel import utilities, instrumentation, mutation
 
 
-class Ariel:
+class PyAriel:
     def run(self, rule_set: Callable, test_suite: List[Callable], test_scope: Dict) -> Dict[ast.Module, List[float]]:
         source = inspect.getsource(rule_set)  # Retrieve the source code of the rule set.
         rule_set_ast = ast.parse(source)  # Parse the source of the rule set into an AST.
@@ -29,7 +29,8 @@ class Ariel:
     def select_parent(self, archive: Dict[ast.Module, int]) -> ast.Module:
         return random.choice(list(archive.keys()))
 
-    def update_archive(self, archive: Dict[ast.Module, List[float]], rule_set: ast.Module, test_suite: List[Callable], scope: Dict) -> Dict[
+    def update_archive(self, archive: Dict[ast.Module, List[float]], rule_set: ast.Module, test_suite: List[Callable],
+                       scope: Dict) -> Dict[
         ast.Module, List[float]]:
         code = compile(rule_set, '<ast>', 'exec')  # Compile the instrumented AST of the rule set.
         exec(code, scope)  # Execute the compiled AST of the rule set in the given scope.
@@ -49,7 +50,8 @@ class Ariel:
             if utilities.dominates(solution_objectives_scores, min_objectives_scores):  # An archive solution dominates.
                 dominated = True
                 break
-            elif utilities.dominates(min_objectives_scores, solution_objectives_scores):  # Dominates an archive solution.
+            elif utilities.dominates(min_objectives_scores,
+                                     solution_objectives_scores):  # Dominates an archive solution.
                 dominated_solutions.append(solution)
 
         dominates = True if len(dominated_solutions) > 0 else False
@@ -73,9 +75,11 @@ class Ariel:
             p = random.uniform(0, 1)
         return mutated_rule_set
 
-    def fault_localization(self, rule_set: ast.Module, test_suite: List[Callable], test_scope: Dict) -> Tuple[List[int], int]:
-        instrumented_rule_set = copy.deepcopy(rule_set)  # Replace the original rule set with a deep copy for instrumentation.
-        transformers.Instrumenter().visit(instrumented_rule_set)  # Instrument the rule set.
+    def fault_localization(self, rule_set: ast.Module, test_suite: List[Callable], test_scope: Dict) -> Tuple[
+        List[int], int]:
+        instrumented_rule_set = copy.deepcopy(
+            rule_set)  # Replace the original rule set with a deep copy for instrumentation.
+        instrumentation.Instrumenter().visit(instrumented_rule_set)  # Instrument the rule set.
         ast.fix_missing_locations(instrumented_rule_set)  # Fix the missing line numbers and other fields in the AST.
 
         code = compile(instrumented_rule_set, '<ast>', 'exec')  # Compile the instrumented AST of the rule set.
@@ -105,7 +109,8 @@ class Ariel:
 
         suspiciousness = {}
         for statement in list(set(passed) | set(failed)):  # Determine the suspiciousness of each executed statement.
-            suspiciousness[statement] = utilities.tarantula_suspiciousness(statement, passed, failed, total_passed, total_failed)
+            suspiciousness[statement] = utilities.tarantula_suspiciousness(statement, passed, failed, total_passed,
+                                                                           total_failed)
 
         statement = utilities.roulette_wheel_selection(suspiciousness)  # Select a random statement using RWS.
         possible_paths = [executed_path for executed_path in executed_paths if statement in executed_path]
@@ -113,18 +118,10 @@ class Ariel:
         return path, statement
 
     def apply_mutation(self, rule_set: ast.Module, path: List[int], statement: int) -> ast.Module:
-        self.modify_mutation(rule_set, statement)
+        path_references, statement_reference = mutation.find_references(rule_set, path, statement)
+
+        mutation.modify(statement_reference)
+        # mutation.shift(path, statement)
+
         ast.fix_missing_locations(rule_set)
         return rule_set
-
-    def modify_mutation(self, rule_set: ast.Module, statement: int) -> ast.Module:
-        mutated_node = None
-        for node in ast.walk(rule_set):
-            if type(node) == ast.Compare and node.lineno == statement:
-                mutated_node = node
-                break
-        transformers.ModifyMutator().visit(mutated_node)
-        return rule_set
-
-    def shift_mutation(self, rule_set: ast.Module, path: List[int], statement: int) -> ast.Module:
-        pass

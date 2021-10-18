@@ -1,5 +1,4 @@
 import sys
-from typing import Dict
 import numpy as np
 from highway_env.vehicle.kinematics import Vehicle
 

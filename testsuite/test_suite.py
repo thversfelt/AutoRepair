@@ -1,9 +1,9 @@
 from typing import Callable, Dict, List
 import gym
-from benchmark.envs import *
-from benchmark.objectives import *
-from benchmark.features import *
-from benchmark.utilities import *
+from testsuite.envs import *
+from testsuite.objectives import *
+from testsuite.features import *
+from testsuite.utilities import *
 
 
 def test_suite() -> List[Callable]:

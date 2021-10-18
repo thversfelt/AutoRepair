@@ -1,5 +1,4 @@
 from typing import List
-
 from highway_env.envs import AbstractEnv
 
 
