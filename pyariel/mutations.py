@@ -1,26 +1,7 @@
 import ast
 import random
-from typing import Any, List, Tuple
+from typing import List
 from pyariel import utilities
-
-
-class PathReferenceFinder(ast.NodeVisitor):
-    def __init__(self, path: List[int]):
-        self.references = dict.fromkeys(path, None)
-        super().__init__()
-
-    def visit_Compare(self, node: ast.Compare) -> Any:
-        if node.lineno in self.references.keys():
-            self.references[node.lineno] = node
-        self.generic_visit(node)
-
-
-def find_references(rule_set: ast.Module, path: List[int], statement: int) -> Tuple[List[ast.Compare], ast.Compare]:
-    finder = PathReferenceFinder(path)
-    finder.visit(rule_set)
-    path_references = finder.references.values()
-    statement_reference = finder.references[statement]
-    return path_references, statement_reference
 
 
 def modify(statement: ast.Compare):

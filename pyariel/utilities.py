@@ -1,6 +1,7 @@
+import ast
 import math
 import random
-from typing import Dict, List
+from typing import Dict, List, Tuple, Any
 
 
 def tarantula_suspiciousness(
@@ -39,3 +40,21 @@ def order_of_magnitude(number: float) -> int:
         return 10
     else:
         return math.floor(math.log(abs(number), 10))
+
+
+def find_references(rule_set: ast.Module, path: List[int], statement: int) -> Tuple[List[ast.Compare], ast.Compare]:
+    class PathReferenceFinder(ast.NodeVisitor):
+        def __init__(self):
+            self.references = dict.fromkeys(path, None)
+            super().__init__()
+
+        def visit_Compare(self, node: ast.Compare) -> Any:
+            if node.lineno in self.references.keys():
+                self.references[node.lineno] = node
+            self.generic_visit(node)
+
+    finder = PathReferenceFinder()
+    finder.visit(rule_set)
+    path_references = finder.references.values()
+    statement_reference = finder.references[statement]
+    return path_references, statement_reference

@@ -5,7 +5,7 @@ import random
 from typing import Callable, List, Tuple, Dict
 import astor
 import numpy as np
-from pyariel import utilities, instrumentation, mutation
+from pyariel import utilities, instrumentation, mutations
 
 
 class PyAriel:
@@ -118,9 +118,9 @@ class PyAriel:
         return path, statement
 
     def apply_mutation(self, rule_set: ast.Module, path: List[int], statement: int) -> ast.Module:
-        path_references, statement_reference = mutation.find_references(rule_set, path, statement)
+        path_references, statement_reference = utilities.find_references(rule_set, path, statement)
 
-        mutation.modify(statement_reference)
+        mutations.modify(statement_reference)
         # mutation.shift(path, statement)
 
         ast.fix_missing_locations(rule_set)

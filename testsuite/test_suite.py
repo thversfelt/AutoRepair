@@ -1,15 +1,16 @@
-from typing import Callable, Dict, List
+from typing import Dict, List, Callable
 import gym
-from testsuite.envs import *
-from testsuite.objectives import *
+from highway_env.envs import AbstractEnv
 from testsuite.features import *
 from testsuite.utilities import *
+from testsuite.envs import *
 
 
 def test_suite() -> List[Callable]:
     return [
         test_follow_env,
-        test_jam_env
+        test_jam_env,
+        test_rear_env
     ]
 
 
@@ -19,23 +20,14 @@ def test_suite_scope() -> Dict:
 
 def test_follow_env(rule_set: Callable) -> List[float]:
     env = gym.make('follow-env-v0')
-    return test_env(env, rule_set)
+    return simulate_env(env, rule_set)
 
 
 def test_jam_env(rule_set: Callable) -> List[float]:
     env = gym.make('jam-env-v0')
-    return test_env(env, rule_set)
+    return simulate_env(env, rule_set)
 
 
-def test_env(env: AbstractEnv, rule_set: Callable) -> List[float]:
-    env.reset()
-    min_score = None
-    done = False
-    while not done:
-        action = rule_set(env)
-        state, score, done, _ = env.step(action)
-        if min_score is None:
-            min_score = score
-        else:
-            min_score = np.minimum(min_score, score)
-    return min_score
+def test_rear_env(rule_set: Callable) -> List[float]:
+    env = gym.make('rear-env-v0')
+    return simulate_env(env, rule_set)

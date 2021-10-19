@@ -1,11 +1,12 @@
 from highway_env.envs import AbstractEnv
-from testsuite.utilities import get_front_gap, get_front_vehicle
+from testsuite.utilities import get_front_vehicle
 
 
-IDLE_ACCELERATION: float = 0.0  # m/s^2
-ACC_ACCELERATION: float = 0.5  # m/s^2
-ACC_DECELERATION: float = -0.5  # m/s^2
-ES_DECELERATION: float = -1.0  # m/s^2
+IDLE_ACCELERATION: float = 0.0  # Idle acceleration (constant speed) [m/s^2]
+ACC_ACCELERATION: float = 0.5  # Adaptive Cruise Control (ACC) acceleration [m/s^2]
+ACC_DECELERATION: float = -0.5  # Adaptive Cruise Control (ACC) braking [m/s^2]
+AEB_DECELERATION: float = -1.0  # Automated Emergency Braking (AEB) [m/s^2]
+AEA_ACCELERATION: float = 1.0  # Automated Emergency Acceleration (AEA) [m/s^2]
 
 
 def adaptive_cruise_control(env: AbstractEnv) -> float:  # longitudinal control
@@ -19,8 +20,9 @@ def adaptive_cruise_control(env: AbstractEnv) -> float:  # longitudinal control
         return ACC_DECELERATION
 
 
-def emergency_stop(env: AbstractEnv) -> float:  # longitudinal control
-    if get_front_vehicle(env.vehicle) is None:
-        return IDLE_ACCELERATION
-    else:
-        return ES_DECELERATION
+def automated_emergency_braking(env: AbstractEnv) -> float:  # longitudinal control
+    return AEB_DECELERATION
+
+
+def automated_emergency_acceleration(env: AbstractEnv) -> float:  # longitudinal control
+    return AEA_ACCELERATION
