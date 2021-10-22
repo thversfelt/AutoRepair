@@ -4,16 +4,18 @@ import random
 from typing import Dict, List, Tuple, Any
 
 
-def tarantula_suspiciousness(
+def suspiciousness(
         statement: int,
         passed: Dict[int, int], failed: Dict[int, int],
         total_passed: int, total_failed: int) -> float:
+    """Tarantula suspiciousness"""
     percentage_failed = failed[statement] / total_failed if total_failed > 0 else 0  # Prevent division by 0 error.
     percentage_passed = passed[statement] / total_passed if total_passed > 0 else 1  # Prevent division by 0 error.
     return percentage_failed / (percentage_passed + percentage_failed)
 
 
-def roulette_wheel_selection(population: Dict[int, float]) -> int:
+def selection(population: Dict[int, float]) -> int:
+    """Roulette Wheel Selection"""
     total_value = sum(population.values())
     selection_value = random.uniform(0, total_value)
     current_value = 0
@@ -32,7 +34,7 @@ def dominates(one: List[float], other: List[float]) -> bool:
         if one[i] > other[i]:
             return True  # The other does not dominate one, and one dominates at least one objectives of the other.
 
-    return False  # The other does not dominate one, but one does not dominate any objective of the other.
+    return False  # The other does not dominate one, and one does not dominate any objective of the other.
 
 
 def order_of_magnitude(number: float) -> int:
@@ -42,19 +44,19 @@ def order_of_magnitude(number: float) -> int:
         return math.floor(math.log(abs(number), 10))
 
 
-def find_references(rule_set: ast.Module, path: List[int], statement: int) -> Tuple[List[ast.Compare], ast.Compare]:
-    class PathReferenceFinder(ast.NodeVisitor):
+def find_references(rule_set: ast.Module, path: List[int], statement: int) -> Tuple[List[ast.If], ast.If]:
+    class ReferencesFinder(ast.NodeVisitor):
         def __init__(self):
-            self.references = dict.fromkeys(path, None)
+            self.path_references = dict.fromkeys(path, None)
             super().__init__()
 
-        def visit_Compare(self, node: ast.Compare) -> Any:
-            if node.lineno in self.references.keys():
-                self.references[node.lineno] = node
+        def visit_If(self, node: ast.If) -> Any:
+            if node.lineno in self.path_references.keys():
+                self.path_references[node.lineno] = node
             self.generic_visit(node)
 
-    finder = PathReferenceFinder()
+    finder = ReferencesFinder()
     finder.visit(rule_set)
-    path_references = finder.references.values()
-    statement_reference = finder.references[statement]
+    path_references = list(finder.path_references.values())
+    statement_reference = finder.path_references[statement]
     return path_references, statement_reference

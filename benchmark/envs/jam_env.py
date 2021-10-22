@@ -2,10 +2,10 @@ from gym.envs.registration import register
 from highway_env.envs import AbstractEnv, Action
 from highway_env.road.road import RoadNetwork, Road
 from highway_env.vehicle.kinematics import Vehicle
-from testsuite.objectives import scores
+from benchmark.objectives import scores
 
 
-class FollowEnv(AbstractEnv):
+class JamEnv(AbstractEnv):
     @classmethod
     def default_config(cls) -> dict:
         config = super().default_config()
@@ -16,8 +16,8 @@ class FollowEnv(AbstractEnv):
             "action": {
                 "type": "ContinuousAction",
             },
-            "duration": 50,  # [steps]
-            "policy_frequency": 1,  # [steps per policy evaluation]
+            "duration": 16,  # [steps]
+            "policy_frequency": 2,  # [steps per policy evaluation]
             "speed_limit": 30.0  # [m/s]
         })
         return config
@@ -37,14 +37,14 @@ class FollowEnv(AbstractEnv):
         controlled_vehicle = Vehicle(
             road=self.road,
             position=self.road.network.get_lane(("0", "1", 0)).position(0, 0),
-            speed=20.0
+            speed=25.0
         )
-        leading_vehicle = Vehicle(
+        stopped_vehicle = Vehicle(
             road=self.road,
-            position=self.road.network.get_lane(("0", "1", 0)).position(50, 0),
-            speed=15.0
+            position=self.road.network.get_lane(("0", "1", 0)).position(75, 0),
+            speed=0.0
         )
-        self.road.vehicles = [controlled_vehicle, leading_vehicle]
+        self.road.vehicles = [controlled_vehicle, stopped_vehicle]
         self.controlled_vehicles = [controlled_vehicle]
 
     def _reward(self, action: Action) -> [float]:
@@ -58,6 +58,6 @@ class FollowEnv(AbstractEnv):
 
 
 register(
-    id='follow-env-v0',
-    entry_point='testsuite.envs:FollowEnv',
+    id='jam-env-v0',
+    entry_point='benchmark.envs:JamEnv',
 )

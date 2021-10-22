@@ -1,6 +1,6 @@
 from highway_env.envs import AbstractEnv
-from testsuite.features import *
-from testsuite.utilities import *
+from benchmark.features import *
+from benchmark.utilities import *
 
 
 def rule_set(env: AbstractEnv):

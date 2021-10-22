@@ -1,9 +1,9 @@
 from typing import Dict, List, Callable
 import gym
 from highway_env.envs import AbstractEnv
-from testsuite.features import *
-from testsuite.utilities import *
-from testsuite.envs import *
+from benchmark.features import *
+from benchmark.utilities import *
+from benchmark.envs import *
 
 
 def test_suite() -> List[Callable]:

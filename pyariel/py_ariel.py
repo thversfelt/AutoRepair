@@ -26,12 +26,11 @@ class PyAriel:
 
         return archive
 
-    def select_parent(self, archive: Dict[ast.Module, int]) -> ast.Module:
+    def select_parent(self, archive: Dict[ast.Module, List[float]]) -> ast.Module:
         return random.choice(list(archive.keys()))
 
     def update_archive(self, archive: Dict[ast.Module, List[float]], rule_set: ast.Module, test_suite: List[Callable],
-                       scope: Dict) -> Dict[
-        ast.Module, List[float]]:
+                       scope: Dict) -> Dict[ast.Module, List[float]]:
         code = compile(rule_set, '<ast>', 'exec')  # Compile the instrumented AST of the rule set.
         exec(code, scope)  # Execute the compiled AST of the rule set in the given scope.
         callable_rule_set = scope.get('rule_set')  # Extract the rule set function definition from the scope.
@@ -65,12 +64,12 @@ class PyAriel:
         return archive
 
     def generate_patch(self, rule_set: ast.Module, test_suite: List[Callable], scope: Dict) -> ast.Module:
+        mutated_rule_set = copy.deepcopy(rule_set)
         path, statement = self.fault_localization(rule_set, test_suite, scope)
         counter = 0
         p = random.uniform(0, 1)
-        mutated_rule_set = copy.deepcopy(rule_set)
         while p <= pow(0.5, counter):
-            mutated_rule_set = self.apply_mutation(mutated_rule_set, path, statement)
+            self.apply_mutation(mutated_rule_set, path, statement)
             counter += 1
             p = random.uniform(0, 1)
         return mutated_rule_set
@@ -109,19 +108,14 @@ class PyAriel:
 
         suspiciousness = {}
         for statement in list(set(passed) | set(failed)):  # Determine the suspiciousness of each executed statement.
-            suspiciousness[statement] = utilities.tarantula_suspiciousness(statement, passed, failed, total_passed,
-                                                                           total_failed)
+            suspiciousness[statement] = utilities.suspiciousness(statement, passed, failed, total_passed, total_failed)
 
-        statement = utilities.roulette_wheel_selection(suspiciousness)  # Select a random statement using RWS.
+        statement = utilities.selection(suspiciousness)  # Select a random statement using RWS.
         possible_paths = [executed_path for executed_path in executed_paths if statement in executed_path]
         path = random.choice(possible_paths)  # Choose a random executed path that contains the selected statement.
         return path, statement
 
-    def apply_mutation(self, rule_set: ast.Module, path: List[int], statement: int) -> ast.Module:
+    def apply_mutation(self, rule_set: ast.Module, path: List[int], statement: int):
         path_references, statement_reference = utilities.find_references(rule_set, path, statement)
-
         mutations.modify(statement_reference)
-        # mutation.shift(path, statement)
-
         ast.fix_missing_locations(rule_set)
-        return rule_set

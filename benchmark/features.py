@@ -1,5 +1,5 @@
 from highway_env.envs import AbstractEnv
-from testsuite.utilities import get_front_vehicle
+from benchmark.utilities import get_front_vehicle
 
 
 IDLE_ACCELERATION: float = 0.0  # Idle acceleration (constant speed) [m/s^2]

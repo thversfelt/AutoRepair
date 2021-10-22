@@ -1,5 +1,5 @@
-from testsuite.rule_sets import rule_set
-from testsuite.test_suite import test_suite, test_suite_scope
+from benchmark.rule_sets import rule_set
+from benchmark.test_suite import test_suite, test_suite_scope
 from pyariel.py_ariel import PyAriel
 
 

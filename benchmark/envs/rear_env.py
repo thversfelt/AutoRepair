@@ -2,7 +2,7 @@ from gym.envs.registration import register
 from highway_env.envs import AbstractEnv, Action
 from highway_env.road.road import RoadNetwork, Road
 from highway_env.vehicle.kinematics import Vehicle
-from testsuite.objectives import scores
+from benchmark.objectives import scores
 
 
 class RearEnv(AbstractEnv):
@@ -59,5 +59,5 @@ class RearEnv(AbstractEnv):
 
 register(
     id='rear-env-v0',
-    entry_point='testsuite.envs:RearEnv',
+    entry_point='benchmark.envs:RearEnv',
 )
