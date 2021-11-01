@@ -15,9 +15,9 @@ def modify(statement: ast.If):
 
 
 def change_threshold_value(condition: ast.Compare):
-    constant = condition.comparators[0]
-    order_of_magnitude = utilities.order_of_magnitude(constant.value)
-    constant.value = random.gauss(constant.value, order_of_magnitude)
+    threshold = condition.comparators[0]
+    order_of_magnitude = utilities.order_of_magnitude(threshold.value)
+    threshold.value = random.gauss(threshold.value, order_of_magnitude)
 
 
 def change_relational_direction(condition: ast.Compare):
@@ -53,21 +53,38 @@ def change_arithmetic_operation(condition: ast.Compare):
         binary_operation.op = inverse[arithmetic_operation]
 
 
-def shift(path: List[ast.If], statement: ast.If):
+def shift(rule_set: ast.Module, path: List[ast.If], statement: ast.If):
     possible_targets = [node for node in path if node is not statement]
     target = random.choice(possible_targets)
-    swap(path, statement, target)
+    swap(rule_set, path, statement, target)
 
 
-def swap(path: List[ast.If], one: ast.If, other: ast.If):
-    dominates = path.index(other) < path.index(one)
-    if dominates:
+def swap(tree: ast.Module, path: List[ast.If], one: ast.If, other: ast.If):
+    other_dominates = path.index(other) < path.index(one)
+    if other_dominates:
         other_predecessor_index = path.index(other) - 1
-        target_predecessor = path[other_predecessor_index]
-        statement_successor = one.orelse
+        other_predecessor = None if other_predecessor_index == -1 else path[other_predecessor_index]
+        other_successor = other.orelse
 
-        target_predecessor.orelse = [one]
-        one.orelse = [other]
-        other.orelse = statement_successor
+        one_predecessor_index = path.index(one) - 1
+        one_predecessor = None if one_predecessor_index == -1 else path[one_predecessor_index]
+        one_successor = one.orelse
+
+        if other_predecessor is None:
+            tree.body = [one]
+        else:
+            other_predecessor.orelse = [one]
+
+        if one_predecessor is None:
+            tree.body = [other]
+        else:
+            one_predecessor.orelse = [other]
+
+        if one_predecessor == other:
+            one.orelse = [other]
+            other.orelse = one_successor
+        else:
+            one.orelse = other_successor
+            other.orelse = one_successor
     else:
         pass  # TODO: case 2

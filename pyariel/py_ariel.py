@@ -14,7 +14,7 @@ class PyAriel:
         rule_set_ast = ast.parse(source)  # Parse the source of the rule set into an AST.
 
         archive = self.update_archive({}, rule_set_ast, test_suite, test_scope)
-        while [0.0] * len(test_suite) not in archive.values():
+        while not all(value == [0.0] * len(value) for value in archive.values()):
             parent_rule_set = self.select_parent(archive)
             mutated_rule_set = self.generate_patch(parent_rule_set, test_suite, test_scope)
             archive = self.update_archive(archive, mutated_rule_set, test_suite, test_scope)
@@ -85,7 +85,7 @@ class PyAriel:
         exec(code, test_scope)  # Execute the compiled AST of the rule set in the given scope.
         callable_rule_set = test_scope['rule_set']  # Extract the rule set function definition from the scope.
 
-        executed_paths = []  # Records all executed paths during execution of all test cases in the test suite.
+        paths = []  # Records all paths during execution of all test cases in the test suite.
         passed = {}  # Records the number of passed test cases that executed each statement.
         failed = {}  # Records the number of failed test cases that executed each statement.
         total_passed = 0  # Records the total number of passed test cases.
@@ -93,29 +93,29 @@ class PyAriel:
 
         for test in test_suite:  # For each test case in the test suite, do:
             objectives_scores = test(callable_rule_set)  # Run the test case and record the result.
-            executed_path = test_scope['executed_path']  # Extract the executed path variable from the scope.
-            executed_paths.append(executed_path)  # Add the executed path to the list of all executed paths.
+            path_lines = test_scope['path_lines']  # Extract the path lines variable from the scope.
+            paths.append(path_lines)  # Add the path lines to the list of all paths.
 
             test_passed = True if -1.0 not in objectives_scores else False
             total_passed += test_passed  # Increment the total amount of passed tests.
             total_failed += (not test_passed)  # Increment the total amount of failed tests.
 
-            for statement in executed_path:  # For each of the executed statements of the executed path, do:
-                passed_count = passed.get(statement) if statement in passed else 0
-                failed_count = failed.get(statement) if statement in failed else 0
-                passed[statement] = passed_count + test_passed  # Increment the amount of passed tests for it.
-                failed[statement] = failed_count + (not test_passed)  # Increment the amount of failed tests for it.
+            for statement_line in path_lines:  # For each of the statements of the path, do:
+                passed_count = passed.get(statement_line) if statement_line in passed else 0
+                failed_count = failed.get(statement_line) if statement_line in failed else 0
+                passed[statement_line] = passed_count + test_passed  # Increment its amount of passed tests.
+                failed[statement_line] = failed_count + (not test_passed)  # Increment its amount of failed tests.
 
         suspiciousness = {}
-        for statement in list(set(passed) | set(failed)):  # Determine the suspiciousness of each executed statement.
-            suspiciousness[statement] = utilities.suspiciousness(statement, passed, failed, total_passed, total_failed)
+        for statement_line in list(set(passed) | set(failed)):  # Determine the suspiciousness of each statement.
+            suspiciousness[statement_line] = utilities.suspiciousness(statement_line, passed, failed, total_passed, total_failed)
 
-        statement = utilities.selection(suspiciousness)  # Select a random statement using RWS.
-        possible_paths = [executed_path for executed_path in executed_paths if statement in executed_path]
-        path = random.choice(possible_paths)  # Choose a random executed path that contains the selected statement.
-        return path, statement
+        statement_line = utilities.selection(suspiciousness)  # Select a random statement using RWS.
+        possible_paths_lines = [path_lines for path_lines in paths if statement_line in path_lines]
+        path_lines = random.choice(possible_paths_lines)  # Choose a random path that contains the selected statement.
+        return path_lines, statement_line
 
-    def apply_mutation(self, rule_set: ast.Module, path: List[int], statement: int):
-        path_references, statement_reference = utilities.find_references(rule_set, path, statement)
-        mutations.modify(statement_reference)
+    def apply_mutation(self, rule_set: ast.Module, path_lines: List[int], statement_line: int):
+        path, statement = utilities.find_references(rule_set, path_lines, statement_line)
+        mutations.modify(statement)
         ast.fix_missing_locations(rule_set)

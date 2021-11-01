@@ -44,19 +44,19 @@ def order_of_magnitude(number: float) -> int:
         return math.floor(math.log(abs(number), 10))
 
 
-def find_references(rule_set: ast.Module, path: List[int], statement: int) -> Tuple[List[ast.If], ast.If]:
+def find_references(rule_set: ast.Module, path_lines: List[int], statement_line: int) -> Tuple[List[ast.If], ast.If]:
     class ReferencesFinder(ast.NodeVisitor):
         def __init__(self):
-            self.path_references = dict.fromkeys(path, None)
+            self.path = dict.fromkeys(path_lines, None)
             super().__init__()
 
         def visit_If(self, node: ast.If) -> Any:
-            if node.lineno in self.path_references.keys():
-                self.path_references[node.lineno] = node
+            if node.lineno in self.path.keys():
+                self.path[node.lineno] = node
             self.generic_visit(node)
 
     finder = ReferencesFinder()
     finder.visit(rule_set)
-    path_references = list(finder.path_references.values())
-    statement_reference = finder.path_references[statement]
-    return path_references, statement_reference
+    path = list(finder.path.values())
+    statement = finder.path[statement_line]
+    return path, statement

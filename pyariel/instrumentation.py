@@ -13,7 +13,7 @@ class Instrumenter(ast.NodeTransformer):
         """
         self.generic_visit(node)
         declare_node = ast.Assign(
-            targets=[ast.Name(id='executed_path', ctx=ast.Store())],
+            targets=[ast.Name(id='path_lines', ctx=ast.Store())],
             value=ast.List(elts=[], ctx=ast.Load())
         )
         node.body.insert(0, declare_node)
@@ -27,9 +27,9 @@ class Instrumenter(ast.NodeTransformer):
             ...
         """
         self.generic_visit(node)
-        global_node = ast.Global(names=['executed_path'])
+        global_node = ast.Global(names=['path_lines'])
         reset_node = ast.Assign(
-            targets=[ast.Name(id='executed_path', ctx=ast.Store())],
+            targets=[ast.Name(id='path_lines', ctx=ast.Store())],
             value=ast.List(elts=[], ctx=ast.Load())
         )
         node.body.insert(0, reset_node)
@@ -49,7 +49,7 @@ class Instrumenter(ast.NodeTransformer):
         append_node = ast.Expr(
             value=ast.Call(
                 func=ast.Attribute(
-                    value=ast.Name(id='executed_path', ctx=ast.Load()),
+                    value=ast.Name(id='path_lines', ctx=ast.Load()),
                     attr='append', ctx=ast.Load()
                 ),
                 args=[ast.Constant(value=node.lineno)],
