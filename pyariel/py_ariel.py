@@ -19,7 +19,7 @@ class PyAriel:
             mutated_rule_set = self.generate_patch(parent_rule_set, test_suite, test_scope)
             archive = self.update_archive(archive, mutated_rule_set, test_suite, test_scope)
 
-            print('----ARCHIVE----')
+            print('------------------------ARCHIVE------------------------')
             for solution, solution_objectives_scores in archive.items():
                 print(solution_objectives_scores)
                 print(astor.to_source(solution))
@@ -31,9 +31,9 @@ class PyAriel:
 
     def update_archive(self, archive: Dict[ast.Module, List[float]], rule_set: ast.Module, test_suite: List[Callable],
                        scope: Dict) -> Dict[ast.Module, List[float]]:
-        code = compile(rule_set, '<ast>', 'exec')  # Compile the instrumented AST of the rule set.
-        exec(code, scope)  # Execute the compiled AST of the rule set in the given scope.
-        callable_rule_set = scope.get('rule_set')  # Extract the rule set function definition from the scope.
+        code = compile(rule_set, filename='', mode='exec')  # Compile the rule set.
+        exec(code, scope)  # Execute the compiled rule set in the given scope.
+        callable_rule_set = scope.get('rule_set')  # Extract the callable rule set from the scope.
 
         min_objectives_scores = None  # Records the lowest scores for each objective.
         for test in test_suite:  # For each test case in the test suite, do:
@@ -108,7 +108,8 @@ class PyAriel:
 
         suspiciousness = {}
         for statement_line in list(set(passed) | set(failed)):  # Determine the suspiciousness of each statement.
-            suspiciousness[statement_line] = utilities.suspiciousness(statement_line, passed, failed, total_passed, total_failed)
+            suspiciousness[statement_line] = utilities.suspiciousness(statement_line, passed, failed, total_passed,
+                                                                      total_failed)
 
         statement_line = utilities.selection(suspiciousness)  # Select a random statement using RWS.
         possible_paths_lines = [path_lines for path_lines in paths if statement_line in path_lines]
@@ -117,5 +118,14 @@ class PyAriel:
 
     def apply_mutation(self, rule_set: ast.Module, path_lines: List[int], statement_line: int):
         path, statement = utilities.find_references(rule_set, path_lines, statement_line)
-        mutations.modify(statement)
+
+        if len(path) == 1:
+            mutation_operator = mutations.modify
+        else:
+            mutation_operator = random.choice([
+                mutations.modify,
+                mutations.shift
+            ])
+
+        mutation_operator(rule_set, path, statement)
         ast.fix_missing_locations(rule_set)

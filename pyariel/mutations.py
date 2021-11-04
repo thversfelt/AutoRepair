@@ -4,7 +4,7 @@ from typing import List
 from pyariel import utilities
 
 
-def modify(statement: ast.If):
+def modify(rule_set: ast.Module, path: List[ast.If], statement: ast.If):
     modifications = [
         change_threshold_value,
         change_relational_direction,
@@ -54,37 +54,38 @@ def change_arithmetic_operation(condition: ast.Compare):
 
 
 def shift(rule_set: ast.Module, path: List[ast.If], statement: ast.If):
-    possible_targets = [node for node in path if node is not statement]
-    target = random.choice(possible_targets)
-    swap(rule_set, path, statement, target)
+    possible_other_statements = [other_statement for other_statement in path if other_statement is not statement]
+    other_statement = random.choice(possible_other_statements)
+    swap(rule_set, path, statement, other_statement)
 
 
-def swap(tree: ast.Module, path: List[ast.If], one: ast.If, other: ast.If):
-    other_dominates = path.index(other) < path.index(one)
-    if other_dominates:
-        other_predecessor_index = path.index(other) - 1
-        other_predecessor = None if other_predecessor_index == -1 else path[other_predecessor_index]
-        other_successor = other.orelse
+def swap(rule_set: ast.Module, path: List[ast.If], one_statement: ast.If, other_statement: ast.If):
+    other_predecessor_index = path.index(other_statement) - 1
+    other_predecessor = None if other_predecessor_index == -1 else path[other_predecessor_index]
+    other_successors = other_statement.orelse
 
-        one_predecessor_index = path.index(one) - 1
-        one_predecessor = None if one_predecessor_index == -1 else path[one_predecessor_index]
-        one_successor = one.orelse
+    one_predecessor_index = path.index(one_statement) - 1
+    one_predecessor = None if one_predecessor_index == -1 else path[one_predecessor_index]
+    one_successors = one_statement.orelse
 
-        if other_predecessor is None:
-            tree.body = [one]
-        else:
-            other_predecessor.orelse = [one]
-
-        if one_predecessor is None:
-            tree.body = [other]
-        else:
-            one_predecessor.orelse = [other]
-
-        if one_predecessor == other:
-            one.orelse = [other]
-            other.orelse = one_successor
-        else:
-            one.orelse = other_successor
-            other.orelse = one_successor
+    if other_predecessor is None:
+        function_definition = rule_set.body[0]
+        function_definition.body = [one_statement]
     else:
-        pass  # TODO: case 2
+        other_predecessor.orelse = [one_statement]
+
+    if one_predecessor is None:
+        function_definition = rule_set.body[0]
+        function_definition.body = [other_statement]
+    else:
+        one_predecessor.orelse = [other_statement]
+
+    if one_predecessor == other_statement:
+        one_statement.orelse = [other_statement]
+        other_statement.orelse = one_successors
+    elif other_predecessor == one_statement:
+        other_statement.orelse = [one_statement]
+        one_statement.orelse = other_successors
+    else:
+        one_statement.orelse = other_successors
+        other_statement.orelse = one_successors
