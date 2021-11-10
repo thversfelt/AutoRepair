@@ -84,6 +84,7 @@ class CustomClosedLoopSimulator(ClosedLoopSimulator):
 
                     if should_update:
                         self.update_agents(sim_agents_dataset, next_frame_index, agents_input_dict, agents_output_dict)
+                        self.update_agents(sim_ego_dataset, next_frame_index, agents_input_dict, agents_output_dict)
 
                     # update input and output buffers
                     agents_frame_in_out = self.get_agents_in_out(agents_input_dict, agents_output_dict,
@@ -101,6 +102,7 @@ class CustomClosedLoopSimulator(ClosedLoopSimulator):
                 ego_output_dict = move_to_numpy(ego_output_dict)
 
                 if should_update:
+                    self.update_ego(sim_agents_dataset, next_frame_index, ego_input_dict, ego_output_dict)
                     self.update_ego(sim_ego_dataset, next_frame_index, ego_input_dict, ego_output_dict)
 
                 ego_frame_in_out = self.get_ego_in_out(ego_input_dict, ego_output_dict, self.keys_to_exclude)
