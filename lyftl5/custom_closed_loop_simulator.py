@@ -112,4 +112,5 @@ class CustomClosedLoopSimulator(ClosedLoopSimulator):
         simulated_outputs: List[SimulationOutput] = []
         for scene_idx in scene_indices:
             simulated_outputs.append(SimulationOutput(scene_idx, sim_ego_dataset, ego_ins_outs, agents_ins_outs))
+
         return simulated_outputs
