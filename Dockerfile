@@ -5,5 +5,6 @@ WORKDIR /app
 COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
 COPY . .
-CMD ["example.py"]
+ENV PYTHONPATH="$PYTHONPATH:/app"
+CMD ["pyariel/example.py"]
 ENTRYPOINT ["python3"]
