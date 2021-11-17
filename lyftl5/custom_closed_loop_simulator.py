@@ -12,11 +12,11 @@ from l5kit.dataset import EgoDataset
 from l5kit.dataset.utils import move_to_device, move_to_numpy
 from l5kit.geometry import rotation33_as_yaw, transform_points
 from l5kit.simulation.dataset import SimulationConfig, SimulationDataset
-from l5kit.simulation.unroll import  ClosedLoopSimulator, ClosedLoopSimulatorModes, SimulationOutput, UnrollInputOutput
+from l5kit.simulation.unroll import ClosedLoopSimulator, ClosedLoopSimulatorModes, SimulationOutput, UnrollInputOutput
 
 
 class CustomClosedLoopSimulator(ClosedLoopSimulator):
-    def __init__(self, 
+    def __init__(self,
                  sim_cfg: SimulationConfig,
                  agents_dataset: EgoDataset,
                  ego_dataset: EgoDataset,

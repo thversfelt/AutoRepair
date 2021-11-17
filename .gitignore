@@ -219,3 +219,6 @@ cython_debug/
 
 # Lyft Level 5 dataset
 lyftl5/tmp/
+
+# HTML files
+*.html
