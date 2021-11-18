@@ -1,18 +1,13 @@
 from collections import defaultdict
-from enum import IntEnum
-from typing import DefaultDict, Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import DefaultDict, List, Optional, Tuple
 
-import numpy as np
 import torch
-from torch.utils.data.dataloader import default_collate
-from tqdm.auto import tqdm
-
-from l5kit.data import AGENT_DTYPE, PERCEPTION_LABEL_TO_INDEX
 from l5kit.dataset import EgoDataset
 from l5kit.dataset.utils import move_to_device, move_to_numpy
-from l5kit.geometry import rotation33_as_yaw, transform_points
 from l5kit.simulation.dataset import SimulationConfig, SimulationDataset
 from l5kit.simulation.unroll import ClosedLoopSimulator, ClosedLoopSimulatorModes, SimulationOutput, UnrollInputOutput
+from torch.utils.data.dataloader import default_collate
+from tqdm.auto import tqdm
 
 
 class CustomClosedLoopSimulator(ClosedLoopSimulator):
