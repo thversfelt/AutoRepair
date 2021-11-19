@@ -14,7 +14,7 @@ from l5kit.visualization.visualizer.zarr_utils import simulation_out_to_visualiz
 
 from custom_closed_loop_simulator import CustomClosedLoopSimulator
 from ego_model import EgoModel
-from lyftl5.physics_model import PhysicsModel
+from lyftl5.ego_model_control import EgoModelControl
 
 if __name__ == '__main__':
     # set env variable for data
@@ -31,8 +31,7 @@ if __name__ == '__main__':
     agents_model = agents_model.eval()
 
     ego_cfg = load_config_data("ego_config.yaml")
-    physics_model = PhysicsModel().to(device)
-    ego_model = EgoModel(physics_model).to(device)
+    ego_model = EgoModel().to(device)
     ego_model = ego_model.eval()
 
     torch.set_grad_enabled(False)
@@ -62,7 +61,7 @@ if __name__ == '__main__':
     scenes_to_unroll = list(range(0, len(eval_ego_zarr.scenes), len(eval_ego_zarr.scenes) // num_scenes_to_unroll))
     sim_outs = sim_loop.unroll(scenes_to_unroll)
 
-    mapAPI = MapAPI.from_cfg(dm, ego_cfg)
+    semantic_map = MapAPI.from_cfg(dm, ego_cfg)
     for sim_out in sim_outs:  # for each scene
-        vis_in = simulation_out_to_visualizer_scene(sim_out, mapAPI)
+        vis_in = simulation_out_to_visualizer_scene(sim_out, semantic_map)
         show(visualize(sim_out.scene_id, vis_in))

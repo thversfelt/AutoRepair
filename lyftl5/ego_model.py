@@ -1,24 +1,27 @@
-import math
-
 import torch
 import torch.nn as nn
 from typing import Dict
-import numpy as np
-
-from lyftl5.physics_model import PhysicsModel
+from l5kit.data import MapAPI
+from lyftl5.ego_model_control import EgoModelControl
+from lyftl5.ego_model_lane_keeping import EgoModelLaneKeeping
 
 
 class EgoModel(nn.Module):
-    def __init__(self, physics_model: PhysicsModel):
+    def __init__(self):
         super().__init__()
-        self.physics_model = physics_model
+        self.control = EgoModelControl()
+        self.lane_keeping = EgoModelLaneKeeping()
 
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         # In this model, the ego agent will simply stand still.
 
-        data_batch["steer_acc"] = torch.Tensor([
-            [0.2, 1.0],  # The steering and acceleration inputs of the ego agent in scene 0.
-            [0.1, 1.0]  # The steering and acceleration inputs of the ego agent in scene 1.
-        ])
+        lane_keeping_output = self.lane_keeping(data_batch)
+        data_batch["steer"] = lane_keeping_output["steer"]
+        data_batch["acc"] = torch.Tensor([0.3, 0.3])
 
-        return self.physics_model.forward(data_batch)
+        #data_batch["steer_acc"] = torch.Tensor([
+        #    [0.2, 1.0],  # The steering and acceleration inputs of the ego agent in scene 0.
+        #    [0.1, 1.0]  # The steering and acceleration inputs of the ego agent in scene 1.
+        #])
+
+        return self.control.forward(data_batch)
