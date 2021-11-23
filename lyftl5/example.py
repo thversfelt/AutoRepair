@@ -8,13 +8,12 @@ from l5kit.data import MapAPI
 from l5kit.dataset import EgoDataset, EgoDatasetVectorized
 from l5kit.rasterization.rasterizer_builder import build_rasterizer
 from l5kit.simulation.dataset import SimulationConfig
-from l5kit.vectorization.vectorizer_builder import build_vectorizer
 from l5kit.visualization.visualizer.visualizer import visualize
 from l5kit.visualization.visualizer.zarr_utils import simulation_out_to_visualizer_scene
 
 from custom_closed_loop_simulator import CustomClosedLoopSimulator
 from ego_model import EgoModel
-from lyftl5.ego_model_control import EgoModelControl
+from lyftl5.custom_vectorizer import build_custom_vectorizer
 
 if __name__ == '__main__':
     # set env variable for data
@@ -45,7 +44,7 @@ if __name__ == '__main__':
 
     eval_ego_cfg = ego_cfg["val_data_loader"]
     eval_ego_zarr = ChunkedDataset(dm.require(eval_ego_cfg["key"])).open()
-    vectorizer = build_vectorizer(ego_cfg, dm)
+    vectorizer = build_custom_vectorizer(ego_cfg, dm)
     ego_dataset = EgoDatasetVectorized(ego_cfg, eval_ego_zarr, vectorizer)
     print(ego_dataset)
 
