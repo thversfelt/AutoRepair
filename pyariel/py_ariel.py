@@ -14,14 +14,14 @@ class PyAriel:
         rule_set_ast = ast.parse(source)  # Parse the source of the rule set into an AST.
 
         archive = self.update_archive({}, rule_set_ast, test_suite, test_scope)
-        while not all(value == [0.0] * len(value) for value in archive.values()):
+        while not all(len([score for score in objectives_scores if score >= 0.0]) == len(objectives_scores) for objectives_scores in archive.values()):
             parent_rule_set = self.select_parent(archive)
             mutated_rule_set = self.generate_patch(parent_rule_set, test_suite, test_scope)
             archive = self.update_archive(archive, mutated_rule_set, test_suite, test_scope)
 
             print('------------------------ARCHIVE------------------------')
-            for solution, solution_objectives_scores in archive.items():
-                print(solution_objectives_scores)
+            for solution, objectives_scores in archive.items():
+                print(objectives_scores)
                 print(astor.to_source(solution))
 
         return archive
@@ -37,7 +37,7 @@ class PyAriel:
 
         min_objectives_scores = None  # Records the lowest scores for each objective.
         for test in test_suite:  # For each test case in the test suite, do:
-            objectives_scores = test(callable_rule_set)  # Run the test case and record the result.
+            objectives_scores = test(callable_rule_set, render=True)  # Run the test case and record the result.
             if min_objectives_scores is None:
                 min_objectives_scores = objectives_scores
             else:
@@ -96,7 +96,7 @@ class PyAriel:
             path_lines = test_scope['path_lines']  # Extract the path lines variable from the scope.
             paths.append(path_lines)  # Add the path lines to the list of all paths.
 
-            test_passed = True if -1.0 not in objectives_scores else False
+            test_passed = len([score for score in objectives_scores if score >= 0.0]) == len(objectives_scores)
             total_passed += test_passed  # Increment the total amount of passed tests.
             total_failed += (not test_passed)  # Increment the total amount of failed tests.
 

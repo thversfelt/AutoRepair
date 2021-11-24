@@ -54,3 +54,7 @@ def simulate_env(env: AbstractEnv, rule_set: Callable, render: bool = False) -> 
         if render:
             env.render()
     return min_score
+
+
+def clamp(x: float, minimum: float, maximum: float) -> float:
+    return max(minimum, min(x, maximum))
