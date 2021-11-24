@@ -37,7 +37,7 @@ class PyAriel:
 
         min_objectives_scores = None  # Records the lowest scores for each objective.
         for test in test_suite:  # For each test case in the test suite, do:
-            objectives_scores = test(callable_rule_set, render=True)  # Run the test case and record the result.
+            objectives_scores = test(callable_rule_set)  # Run the test case and record the result.
             if min_objectives_scores is None:
                 min_objectives_scores = objectives_scores
             else:
