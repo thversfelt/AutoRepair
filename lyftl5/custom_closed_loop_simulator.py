@@ -13,13 +13,12 @@ from tqdm.auto import tqdm
 class CustomClosedLoopSimulator(ClosedLoopSimulator):
     def __init__(self,
                  sim_cfg: SimulationConfig,
+                 device: torch.device,
                  agents_dataset: EgoDataset,
                  ego_dataset: EgoDataset,
-                 device: torch.device,
-                 model_ego: Optional[torch.nn.Module] = None,
-                 model_agents: Optional[torch.nn.Module] = None,
-                 keys_to_exclude: Tuple[str] = ("image",),
-                 mode: int = ClosedLoopSimulatorModes.L5KIT):
+                 model_agents: torch.nn.Module,
+                 model_ego: torch.nn.Module,
+                 keys_to_exclude: Tuple[str] = ("image",)):
         """
         Create a simulation loop object capable of unrolling ego and agents
         :param sim_cfg: configuration for unroll
@@ -29,22 +28,13 @@ class CustomClosedLoopSimulator(ClosedLoopSimulator):
         :param model_ego: the model to be used for ego
         :param model_agents: the model to be used for agents
         :param keys_to_exclude: keys to exclude from input/output (e.g. huge blobs)
-        :param mode: the framework that uses the closed loop simulator
         """
         self.sim_cfg = sim_cfg
-        if not sim_cfg.use_ego_gt and model_ego is None and mode == ClosedLoopSimulatorModes.L5KIT:
-            raise ValueError("ego model should not be None when simulating ego")
-        if not sim_cfg.use_agents_gt and model_agents is None and mode == ClosedLoopSimulatorModes.L5KIT:
-            raise ValueError("agents model should not be None when simulating agent")
-        if sim_cfg.use_ego_gt and mode == ClosedLoopSimulatorModes.GYM:
-            raise ValueError("ego has to be simulated when using gym environment")
-        if not sim_cfg.use_agents_gt and mode == ClosedLoopSimulatorModes.GYM:
-            raise ValueError("agents need be log-replayed when using gym environment")
-
-        self.model_ego = torch.nn.Sequential().to(device) if model_ego is None else model_ego.to(device)
-        self.model_agents = torch.nn.Sequential().to(device) if model_agents is None else model_agents.to(device)
-
         self.device = device
+
+        self.model_ego = model_ego
+        self.model_agents = model_agents
+
         self.agents_dataset = agents_dataset
         self.ego_dataset = ego_dataset
 

@@ -20,6 +20,7 @@ if __name__ == '__main__':
     os.environ["L5KIT_DATA_FOLDER"] = "./tmp/l5kit_data"
     dm = LocalDataManager(None)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print("device: " + str(device))
 
     num_scenes_to_unroll = 2
     num_simulation_steps = 50
@@ -53,8 +54,7 @@ if __name__ == '__main__':
                                distance_th_far=500, distance_th_close=50, num_simulation_steps=num_simulation_steps,
                                start_frame_index=0, show_info=True)
 
-    sim_loop = CustomClosedLoopSimulator(sim_cfg, agents_dataset, ego_dataset, device, model_ego=ego_model,
-                                         model_agents=agents_model)
+    sim_loop = CustomClosedLoopSimulator(sim_cfg, device, agents_dataset, ego_dataset, agents_model, ego_model)
 
     # ==== UNROLL
     scenes_to_unroll = list(range(0, len(eval_ego_zarr.scenes), len(eval_ego_zarr.scenes) // num_scenes_to_unroll))

@@ -5,19 +5,18 @@ import torch.nn as nn
 
 
 class EgoModelControl(nn.Module):
-    def __init__(self, timestep: torch.Tensor = 0.1):
+    def __init__(self):
         super().__init__()
-        self.min_acc: float = -3  # Min acceleration [m/s^2]
-        self.max_acc: float = 3  # Max acceleration [m/s^2]
+        self.min_acc: float = -3.0  # Min acceleration [m/s^2]
+        self.max_acc: float = 3.0  # Max acceleration [m/s^2]
         self.min_steer: float = -math.radians(45)  # Min yaw rate [rad/s]
         self.max_steer: float = math.radians(45)  # Max yaw rate [rad/s]
-        self.timestep = timestep  # [s]
+        self.timestep: float = 0.1  # [s]
         self.speed = None
 
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Implements The Kinematic Bicycle Model: a Consistent Model for Planning Feasible Trajectories for Autonomous
                 Vehicles? (2017)"""
-
         num_of_scenes = len(data_batch['scene_index'])
 
         # Add the ego agent's initial speed in each scene.
@@ -40,7 +39,7 @@ class EgoModelControl(nn.Module):
             velocity = self.speed[i] * torch.tensor([
                 torch.cos(beta),
                 torch.sin(beta)
-            ])
+            ], device='cuda:0')
 
             position = velocity * self.timestep
             yaw = self.speed[i] * torch.sin(beta) / (0.5 * length) * self.timestep

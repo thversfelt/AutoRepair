@@ -1,24 +1,31 @@
 from typing import List, Optional
-
 import numpy as np
-
 from l5kit.configs.config import load_metadata
 from l5kit.data import DataManager
+from l5kit.data.proto.road_network_pb2 import TrafficControlElement, Lane, Junction, RoadNetworkNode
 from l5kit.vectorization.vectorizer import Vectorizer
-
 from lyftl5.custom_map_api import CustomMapAPI
 
 
 class CustomVectorizer(Vectorizer):
     def _vectorize_map(self, agent_centroid_m: np.ndarray, agent_from_world: np.ndarray,
                        history_tl_faces: List[np.ndarray]) -> dict:
-        map_features = super()._vectorize_map(agent_centroid_m, agent_from_world, history_tl_faces)
-        additional_map_features = {}
+
+        for map_element in self.mapAPI.elements:
+            if map_element.HasField("element"):
+                element = map_element.element
+            else:
+                continue
+
+            if element.HasField("node"):
+                node: RoadNetworkNode = element.node
+                print("yay")
+
 
         # TODO: add lane speed limits, connected lane id's, lane_change_to_left/right_id, and lane_yield_to lane id's
         #  from the mapAPI lane elements.
 
-        return {**map_features, **additional_map_features}
+        return {}
 
 
 def build_custom_vectorizer(cfg: dict, data_manager: DataManager) -> CustomVectorizer:
