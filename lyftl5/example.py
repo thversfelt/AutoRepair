@@ -18,15 +18,15 @@ from lyftl5.custom_map_api import CustomMapAPI
 from lyftl5.custom_vectorizer import CustomVectorizer
 
 if __name__ == '__main__':
-    # set env variable for data
-    os.environ["L5KIT_DATA_FOLDER"] = "./tmp/l5kit_data"
+    # set env variable for data.
+    os.environ["L5KIT_DATA_FOLDER"] = "lyftl5/tmp/l5kit_data"
     dm = LocalDataManager(None)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("device: " + str(device))
     torch.set_grad_enabled(False)
 
     # Initialize the agents dataset.
-    agents_cfg = load_config_data("agents_config.yaml")
+    agents_cfg = load_config_data("lyftl5/agents_config.yaml")
     eval_agents_cfg = agents_cfg["val_data_loader"]
     eval_agents_zarr = ChunkedDataset(dm.require(eval_agents_cfg["key"])).open()
     rasterizer = build_rasterizer(agents_cfg, dm)
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     print(agents_dataset)
 
     # Initialize the ego dataset.
-    ego_cfg = load_config_data("ego_config.yaml")
+    ego_cfg = load_config_data("lyftl5/ego_config.yaml")
     eval_ego_cfg = ego_cfg["val_data_loader"]
     eval_ego_zarr = ChunkedDataset(dm.require(eval_ego_cfg["key"])).open()
     map_api = CustomMapAPI(ego_cfg, dm)
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     print(ego_dataset)
 
     # Load the pre-trained agents model.
-    agents_model_path = "./tmp/agents_model/agents_model.pt"
+    agents_model_path = "lyftl5/tmp/agents_model/agents_model.pt"
     agents_model = torch.load(agents_model_path).to(device)
     agents_model = agents_model.eval()
 
@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
     # Setup the simulation.
     num_scenes_to_unroll = 2
-    num_simulation_steps = 248
+    num_simulation_steps = 248  # 248 is the maximum amount simulation steps.
     scenes_to_unroll = random.sample(range(0, len(eval_ego_zarr.scenes)), num_scenes_to_unroll)
 
     sim_cfg = SimulationConfig(use_ego_gt=False, use_agents_gt=False, disable_new_agents=True,

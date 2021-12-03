@@ -21,7 +21,7 @@ class EgoModel(nn.Module):
 
         # lane_keeping_output = self.lane_keeping(data_batch)
         navigation_output = self.navigation.forward(data_batch)
-        data_batch["steer"] = torch.Tensor([0.0, 0.0])  # lane_keeping_output["steer"]
+        data_batch["steer"] = navigation_output["steer"]  # torch.Tensor([0.0, 0.0])
         data_batch["acc"] = torch.Tensor([0.3, 0.3])
 
         # data_batch["steer_acc"] = torch.Tensor([
