@@ -26,6 +26,8 @@ class CustomMapAPI(MapAPI):
         if len(lanes_ahead) > 0:
             lane_ahead = np.random.choice(lanes_ahead)
             return self.id_as_str(lane_ahead)
+        else:
+            return lane_id
 
     def get_closest_lane(self, position: np.ndarray) -> str:
         """Gets the closest lane of the given position.
@@ -44,6 +46,9 @@ class CustomMapAPI(MapAPI):
         lanes_ids = self.bounds_info["lanes"]["ids"]
         lanes_bounds = self.bounds_info["lanes"]["bounds"]
         lanes_indices = indices_in_bounds(position, lanes_bounds, max_lane_distance)
+        if len(lanes_indices) == 0:
+            return None  # There are no lanes close to the given position, return None.
+        
         distances = []
         for lane_idx in lanes_indices:
             lane_id = lanes_ids[lane_idx]
@@ -52,6 +57,7 @@ class CustomMapAPI(MapAPI):
             midlanes_distance = np.linalg.norm(midlanes - position, axis=-1)
             distances.append(np.min(midlanes_distance))
         lanes_indices = lanes_indices[np.argsort(distances)]
+        
         closest_lane_idx = lanes_indices[0]
         closest_lane_id = lanes_ids[closest_lane_idx]
         return closest_lane_id

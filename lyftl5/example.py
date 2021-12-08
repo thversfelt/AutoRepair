@@ -54,7 +54,7 @@ if __name__ == '__main__':
     # Setup the simulation.
     num_scenes_to_unroll = 2
     num_simulation_steps = 248  # 248 is the maximum amount simulation steps.
-    scenes_to_unroll = random.sample(range(0, len(eval_ego_zarr.scenes)), num_scenes_to_unroll)
+    scenes_to_unroll = [0, 1] #random.sample(range(0, len(eval_ego_zarr.scenes)), num_scenes_to_unroll)
 
     sim_cfg = SimulationConfig(use_ego_gt=False, use_agents_gt=False, disable_new_agents=True,
                                distance_th_far=500, distance_th_close=50, num_simulation_steps=num_simulation_steps,

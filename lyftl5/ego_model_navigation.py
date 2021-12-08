@@ -19,12 +19,21 @@ class EgoModelNavigation(nn.Module):
             ego_from_world = data_batch["agent_from_world"][scene_idx].cpu().numpy()
             
             closest_lane_id = self.map_api.get_closest_lane(ego_position)
+            if (closest_lane_id is None):
+                steer[scene_idx] = 0.0
+                continue
+    
             closest_midpoint = self.map_api.get_closest_lane_midpoint(closest_lane_id, ego_from_world)
-            while closest_midpoint is None:
+            if closest_midpoint is None:
                 next_lane_id = self.map_api.get_next_lane(closest_lane_id)
                 closest_midpoint = self.map_api.get_closest_lane_midpoint(next_lane_id, ego_from_world)
             
-            steer[scene_idx] = closest_midpoint[1]
+            if closest_midpoint is None:
+                steer[scene_idx] = 0.0
+                continue
+            else:
+                steer[scene_idx] = closest_midpoint[1]  # Steer input is proportional to the relative-y coordinate of the closest midpoint.
+                continue
         
         eval_dict = {"steer": steer}
         return eval_dict
