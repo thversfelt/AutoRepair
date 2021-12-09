@@ -1,4 +1,3 @@
-from typing import List
 import numpy as np
 from l5kit.configs.config import load_metadata
 from l5kit.data import MapAPI, DataManager
@@ -36,11 +35,9 @@ class CustomMapAPI(MapAPI):
             position (np.ndarray): The position to get the closest lane of.
 
         Returns:
-            str: The lane id.
+            str: The lane id of the closest lane to the given position.
         """
-        max_lane_distance = self.lane_cfg_params["max_retrieval_distance_m"]  # Only look at lanes within this distance.
-        max_lane_points = self.lane_cfg_params["max_points_per_lane"]  # Maximum amounts of points to represent lane.
-        interpolation_method = InterpolationMethod.INTER_ENSURE_LEN  # Split lane in a fixed number of points
+        max_lane_distance = self.lane_cfg_params["max_retrieval_distance_m"]  # Only consider lanes within this distance to the given position.
 
         # filter first by bounds and then by distance, so that we always take the closest lanes
         lanes_ids = self.bounds_info["lanes"]["ids"]
@@ -49,47 +46,34 @@ class CustomMapAPI(MapAPI):
         if len(lanes_indices) == 0:
             return None  # There are no lanes close to the given position, return None.
         
-        distances = []
+        lanes_distances = []
         for lane_idx in lanes_indices:
             lane_id = lanes_ids[lane_idx]
-            lane = self.get_lane_as_interpolation(lane_id, max_lane_points, interpolation_method)
-            midlanes = lane["xyz_midlane"][:, :2]
-            midlanes_distance = np.linalg.norm(midlanes - position, axis=-1)
-            distances.append(np.min(midlanes_distance))
-        lanes_indices = lanes_indices[np.argsort(distances)]
+            closest_midpoints = self.get_closest_lane_midpoints(position, lane_id)  # Determine closest lane midpoints to the given position.
+            closest_midpoint = closest_midpoints[0]  # The closest midpoint is the first element of the sorted list of lane midpoints.
+            closest_midpoint_distance = np.linalg.norm(closest_midpoint - position)  # Determine distance from the closest midpoint to the given position.
+            lanes_distances.append(closest_midpoint_distance)  # Assign the lane distance to be the closest midpoint to the given position.
+        lanes_indices = lanes_indices[np.argsort(lanes_distances)]  # Sort the lane indices by lane distance, ascending.
         
         closest_lane_idx = lanes_indices[0]
         closest_lane_id = lanes_ids[closest_lane_idx]
         return closest_lane_id
 
-    def get_closest_lane_midpoint(self, lane_id: str, transf_matrix: np.ndarray) -> np.ndarray:
-        """[summary]
+    def get_closest_lane_midpoints(self, position: np.ndarray, lane_id: str) -> np.ndarray:
+        """Gets a sorted list (ascending) of midpoints of the lane, defined by the lane id, that are closest to the given position.
 
         Args:
-            position (np.ndarray): [description]
-            lane_id (str): [description]
+            position (np.ndarray): The position to get the closest midpoints to.
+            lane_id (str): The id of the lane to get the closest midpoints of.
 
         Returns:
-            np.ndarray: [description]
+            np.ndarray: A sorted list (ascending) of midpoints, that are closest to the given position.
         """
         max_lane_points = self.lane_cfg_params["max_points_per_lane"]  # Maximum amounts of points to represent lane.
-        interpolation_method = InterpolationMethod.INTER_ENSURE_LEN  # Split lane in a fixed number of points
-        
+        interpolation_method = InterpolationMethod.INTER_ENSURE_LEN  # Split lane in a fixed number of points.
         lane = self.get_lane_as_interpolation(lane_id, max_lane_points, interpolation_method)
-        midlane = lane["xyz_midlane"][:, :2]
-        midlane = transform_points(midlane, transf_matrix)
+        midpoints = lane["xyz_midlane"][:, :2]  # Retrieve the lane's midpoints.
+        midpoints_distance = np.linalg.norm(midpoints - position, axis=-1)  # Determine the distance between each midpoint and the given position.
+        closest_midpoints = midpoints[np.argsort(midpoints_distance)]  # Sort the midpoints by midpoint distance to the given position, ascending.
+        return closest_midpoints
         
-        next_midpoint = None
-        next_midpoint_distance = None
-        for midpoint in midlane:
-            if midpoint[0] <= 0:  # X-coordinate is equal or less than 0 in the agent's reference system, so is behind.
-                continue  # Filter points that are behind the agent in its reference system.
-            midpoint_distance = np.linalg.norm(midpoint)
-            if next_midpoint is None:
-                next_midpoint = midpoint
-                next_midpoint_distance = midpoint_distance
-            elif midpoint_distance < next_midpoint_distance:
-                next_midpoint = midpoint
-                next_midpoint_distance = midpoint_distance
-        
-        return next_midpoint

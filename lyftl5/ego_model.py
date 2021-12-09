@@ -18,7 +18,7 @@ class EgoModel(nn.Module):
 
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         # In this model, the ego agent will simply stand still.
-
+        
         # lane_keeping_output = self.lane_keeping(data_batch)
         navigation_output = self.navigation.forward(data_batch)
         data_batch["steer"] = navigation_output["steer"]  # torch.Tensor([0.0, 0.0])
