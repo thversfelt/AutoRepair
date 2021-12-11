@@ -1,10 +1,12 @@
+from typing import List
 import numpy as np
 from l5kit.configs.config import load_metadata
 from l5kit.data import MapAPI, DataManager
 from l5kit.data.map_api import InterpolationMethod
-from l5kit.data.proto.road_network_pb2 import Lane
+from l5kit.data.proto.road_network_pb2 import GlobalId, Lane, MapElement
 from l5kit.rasterization.semantic_rasterizer import indices_in_bounds
 from l5kit.geometry.transform import transform_points
+from queue import PriorityQueue
 
 
 class CustomMapAPI(MapAPI):
@@ -17,18 +19,7 @@ class CustomMapAPI(MapAPI):
 
         self.lane_cfg_params = cfg["data_generation_params"]["lane_params"]
 
-    def get_next_lane(self, lane_id: str) -> str:
-        lane_idx = self.ids_to_el[lane_id]
-        element = self.elements[lane_idx]
-        lane = element.element.lane
-        lanes_ahead = lane.lanes_ahead
-        if len(lanes_ahead) > 0:
-            lane_ahead = np.random.choice(lanes_ahead)
-            return self.id_as_str(lane_ahead)
-        else:
-            return lane_id
-
-    def get_closest_lane(self, position: np.ndarray) -> str:
+    def get_closest_lanes_ids(self, position: np.ndarray) -> List[str]:
         """Gets the closest lane of the given position.
 
         Args:
@@ -48,16 +39,15 @@ class CustomMapAPI(MapAPI):
         
         lanes_distances = []
         for lane_idx in lanes_indices:
-            lane_id = lanes_ids[lane_idx]
+            lane_id = lanes_ids[lane_idx]  # Get the id of the line index (id != index, id is a string, index and integer index of a list).
             closest_midpoints = self.get_closest_lane_midpoints(position, lane_id)  # Determine closest lane midpoints to the given position.
             closest_midpoint = closest_midpoints[0]  # The closest midpoint is the first element of the sorted list of lane midpoints.
             closest_midpoint_distance = np.linalg.norm(closest_midpoint - position)  # Determine distance from the closest midpoint to the given position.
             lanes_distances.append(closest_midpoint_distance)  # Assign the lane distance to be the closest midpoint to the given position.
         lanes_indices = lanes_indices[np.argsort(lanes_distances)]  # Sort the lane indices by lane distance, ascending.
         
-        closest_lane_idx = lanes_indices[0]
-        closest_lane_id = lanes_ids[closest_lane_idx]
-        return closest_lane_id
+        closest_lanes_ids = np.take(lanes_ids, lanes_indices)  # Get the ids of the sorted list of lane indices.
+        return closest_lanes_ids
 
     def get_closest_lane_midpoints(self, position: np.ndarray, lane_id: str) -> np.ndarray:
         """Gets a sorted list (ascending) of midpoints of the lane, defined by the lane id, that are closest to the given position.
@@ -76,4 +66,62 @@ class CustomMapAPI(MapAPI):
         midpoints_distance = np.linalg.norm(midpoints - position, axis=-1)  # Determine the distance between each midpoint and the given position.
         closest_midpoints = midpoints[np.argsort(midpoints_distance)]  # Sort the midpoints by midpoint distance to the given position, ascending.
         return closest_midpoints
+    
+    def get_route(self, start_position: np.ndarray, end_position: np.ndarray) -> List[str]:
+        LANE_LENGTH = 1
         
+        start_lanes_ids = self.get_closest_lanes_ids(start_position)
+        end_lanes_ids = self.get_closest_lanes_ids(end_position)
+        
+        start_lane_id = start_lanes_ids[0]
+        
+        # A priority queue with tuples (distance, (lane_id, parent_lane_id)), which contains the distances from the 
+        # start lane to the lane represented by lane_id, through the parent lane represented by parent_lane_id.
+        explored_lanes_ids = PriorityQueue() 
+        visited_lanes_ids = [start_lane_id]
+        
+        for lane_id in self.get_connected_lanes_ids(start_lane_id):
+            visited_lanes_ids.put(LANE_LENGTH, (lane_id, start_lane_id))
+        
+        # While the list of visisted lanes doesn't contain any end lane, keep searching.
+        while not any(lane_id in visited_lanes_ids for lane_id in end_lanes_ids):
+            explored_lane_distance = explored_lanes_ids[0]
+            explored_lane_id = explored_lanes_ids[1][0]
+            explored_lane_parent_id = explored_lanes_ids[1][1]
+            break
+        
+        return []
+    
+    def get_element(self, element_id: str) -> MapElement:
+        element_idx = self.ids_to_el[element_id]
+        element = self.elements[element_idx]
+        return element
+    
+    def get_lane(self, lane_id: str) -> Lane:
+        element = self.get_element(lane_id)
+        return element.element.lane
+
+    def get_connected_lanes_ids(self, lane_id: str) -> List[str]:
+        ahead_lanes_ids = self.get_ahead_lanes_ids(lane_id)
+        change_lanes_ids = self.get_change_lanes_ids(lane_id)
+        return ahead_lanes_ids + change_lanes_ids
+
+    def get_ahead_lanes_ids(self, lane_id: str) -> List[str]:
+        lane = self.get_lane(lane_id)
+        ahead_lanes_ids = []
+        for ahead_lane in lane.lanes_ahead:
+            ahead_lane_id = self.id_as_str(ahead_lane)
+            if bool(ahead_lane_id):
+                ahead_lanes_ids.append(ahead_lane_id)
+        return ahead_lanes_ids
+
+    def get_change_lanes_ids(self, lane_id: str) -> List[str]:
+        lane = self.get_lane(lane_id)
+        change_lanes_ids = []
+        change_left_lane_id = self.id_as_str(lane.adjacent_lane_change_left)
+        change_right_lane_id = self.id_as_str(lane.adjacent_lane_change_right)
+        if bool(change_left_lane_id):
+            change_lanes_ids.append(change_left_lane_id)
+        if bool(change_right_lane_id):
+            change_lanes_ids.append(change_right_lane_id)
+        return change_lanes_ids
