@@ -24,9 +24,9 @@ class EgoModelNavigation(nn.Module):
                 end_position = data_batch["target_positions"][scene_idx][end_position_idx].cpu().numpy()
                 world_from_ego = data_batch["world_from_agent"][scene_idx].cpu().numpy()  # Transform the end position to the world's reference system.
                 end_position = transform_point(end_position, world_from_ego)
-                route = self.map_api.get_route(start_position, end_position)
+                route = self.map_api.get_shortest_route(start_position, end_position)
                 self.route.append(route)
-                
+        
         steer = torch.zeros([num_of_scenes], dtype=torch.float64)
         for scene_idx in range(num_of_scenes):
             ego_position = data_batch["centroid"][scene_idx].cpu().numpy()

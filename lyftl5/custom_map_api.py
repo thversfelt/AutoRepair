@@ -67,29 +67,46 @@ class CustomMapAPI(MapAPI):
         closest_midpoints = midpoints[np.argsort(midpoints_distance)]  # Sort the midpoints by midpoint distance to the given position, ascending.
         return closest_midpoints
     
-    def get_route(self, start_position: np.ndarray, end_position: np.ndarray) -> List[str]:
+    def get_shortest_route(self, start_position: np.ndarray, end_position: np.ndarray) -> List[str]:
+        """Implements Dijkstra's Algorithm (https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm).
+
+        Args:
+            start_position (np.ndarray): Start position coordinates (x, y) in world reference system.
+            end_position (np.ndarray): End position coordinates (x, y) in world reference system.
+
+        Returns:
+            List[str]: The route as a list of lane id's.
+        """
         LANE_LENGTH = 1
         
         start_lanes_ids = self.get_closest_lanes_ids(start_position)
-        end_lanes_ids = self.get_closest_lanes_ids(end_position)
-        
+        end_lane_id = self.get_closest_lanes_ids(end_position)[0]
         start_lane_id = start_lanes_ids[0]
         
         # A priority queue with tuples (distance, (lane_id, parent_lane_id)), which contains the distances from the 
         # start lane to the lane represented by lane_id, through the parent lane represented by parent_lane_id.
         explored_lanes_ids = PriorityQueue() 
-        visited_lanes_ids = [start_lane_id]
-        
-        for lane_id in self.get_connected_lanes_ids(start_lane_id):
-            visited_lanes_ids.put(LANE_LENGTH, (lane_id, start_lane_id))
+        visited_lanes_ids = {}
+        explored_lanes_ids.put((0, (start_lane_id, start_lane_id)))
         
         # While the list of visisted lanes doesn't contain any end lane, keep searching.
-        while not any(lane_id in visited_lanes_ids for lane_id in end_lanes_ids):
-            explored_lane_distance = explored_lanes_ids[0]
-            explored_lane_id = explored_lanes_ids[1][0]
-            explored_lane_parent_id = explored_lanes_ids[1][1]
-            break
-        
+        while end_lane_id not in visited_lanes_ids:
+            # Get the unvisited lane that has the smallest distance to the start lane from the priority queue.
+            explored_lane = explored_lanes_ids.get()
+            explored_lane_distance = explored_lane[0]
+            explored_lane_id = explored_lane[1][0]
+            explored_lane_parent_id = explored_lane[1][1]
+            
+            # Add the explored lane to the set of visited lanes.
+            if explored_lane_id not in visited_lanes_ids:
+                visited_lanes_ids[explored_lane_id] = explored_lane_parent_id
+            
+            # Explore all the connected lanes that have not been visited yet, and append the distance from this lane to 
+            # that lane to the recorded distance from the start lane. 
+            for lane_id in self.get_connected_lanes_ids(explored_lane_id):
+                if lane_id not in visited_lanes_ids:
+                    explored_lanes_ids.put((explored_lane_distance + LANE_LENGTH, (lane_id, explored_lane_id)))
+                    
         return []
     
     def get_element(self, element_id: str) -> MapElement:
