@@ -1,5 +1,6 @@
 from typing import List
 import numpy as np
+import math
 from l5kit.configs.config import load_metadata
 from l5kit.data import MapAPI, DataManager
 from l5kit.data.map_api import InterpolationMethod
@@ -7,6 +8,7 @@ from l5kit.data.proto.road_network_pb2 import GlobalId, Lane, MapElement
 from l5kit.rasterization.semantic_rasterizer import indices_in_bounds
 from l5kit.geometry.transform import transform_points
 from queue import PriorityQueue
+from collections import deque
 
 
 class CustomMapAPI(MapAPI):
@@ -77,11 +79,8 @@ class CustomMapAPI(MapAPI):
         Returns:
             List[str]: The route as a list of lane id's.
         """
-        LANE_LENGTH = 1
-        
-        start_lanes_ids = self.get_closest_lanes_ids(start_position)
+        start_lane_id = self.get_closest_lanes_ids(start_position)[0]
         end_lane_id = self.get_closest_lanes_ids(end_position)[0]
-        start_lane_id = start_lanes_ids[0]
         
         # A priority queue with tuples (distance, (lane_id, parent_lane_id)), which contains the distances from the 
         # start lane to the lane represented by lane_id, through the parent lane represented by parent_lane_id.
@@ -105,9 +104,17 @@ class CustomMapAPI(MapAPI):
             # that lane to the recorded distance from the start lane. 
             for lane_id in self.get_connected_lanes_ids(explored_lane_id):
                 if lane_id not in visited_lanes_ids:
-                    explored_lanes_ids.put((explored_lane_distance + LANE_LENGTH, (lane_id, explored_lane_id)))
-                    
-        return []
+                    lane_length = self.get_approx_lane_length(lane_id)
+                    explored_lanes_ids.put((explored_lane_distance + lane_length, (lane_id, explored_lane_id)))
+        
+        # Backtrack the output to get the shortest route.
+        shortest_route = deque()
+        lane_id = end_lane_id
+        while start_lane_id not in shortest_route:
+            shortest_route.appendleft(lane_id)  # Add the lane id to the shortest route.
+            lane_id = visited_lanes_ids[lane_id]  # Set the lane id as the parent of the current lane.
+        
+        return list(shortest_route)
     
     def get_element(self, element_id: str) -> MapElement:
         element_idx = self.ids_to_el[element_id]
@@ -142,3 +149,18 @@ class CustomMapAPI(MapAPI):
         if bool(change_right_lane_id):
             change_lanes_ids.append(change_right_lane_id)
         return change_lanes_ids
+
+    def get_approx_lane_length(self, lane_id: str) -> float:
+        lane = self.get_lane_coords(lane_id)
+        
+        # Get the lane bounds.
+        x_min = min(np.min(lane["xyz_left"][:, 0]), np.min(lane["xyz_right"][:, 0]))
+        y_min = min(np.min(lane["xyz_left"][:, 1]), np.min(lane["xyz_right"][:, 1]))
+        x_max = max(np.max(lane["xyz_left"][:, 0]), np.max(lane["xyz_right"][:, 0]))
+        y_max = max(np.max(lane["xyz_left"][:, 1]), np.max(lane["xyz_right"][:, 1]))
+        
+        # Approximate the lane length as the lane bounds diagional length.
+        x_length = abs(x_max - x_min)
+        y_length = abs(y_max - y_min)
+        lane_length = math.hypot(x_length, y_length)
+        return lane_length
