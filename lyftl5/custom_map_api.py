@@ -162,3 +162,22 @@ class CustomMapAPI(MapAPI):
         y_length = abs(y_max - y_min)
         lane_length = math.hypot(x_length, y_length)
         return lane_length
+    
+    def get_lane_progress(self, position: np.ndarray, lane_id: str) -> float:
+        """Gets a sorted list (ascending) of midpoints of the lane, defined by the lane id, that are closest to the given position.
+
+        Args:
+            position (np.ndarray): The position to get the closest midpoints to.
+            lane_id (str): The id of the lane to get the closest midpoints of.
+
+        Returns:
+            np.ndarray: A sorted list (ascending) of midpoints, that are closest to the given position.
+        """
+        max_lane_points = self.lane_cfg_params["max_points_per_lane"]  # Maximum amounts of points to represent lane.
+        interpolation_method = InterpolationMethod.INTER_ENSURE_LEN  # Split lane in a fixed number of points.
+        lane = self.get_lane_as_interpolation(lane_id, max_lane_points, interpolation_method)
+        midpoints = lane["xyz_midlane"][:, :2]  # Retrieve the lane's midpoints.
+        progress = np.linspace(0, 1, len(midpoints))
+        midpoints_distance = np.linalg.norm(midpoints - position, axis=-1)  # Determine the distance between each midpoint and the given position.
+        progress = progress[np.argsort(midpoints_distance)]  # Sort the midpoints by midpoint distance to the given position, ascending.
+        return progress[0]
