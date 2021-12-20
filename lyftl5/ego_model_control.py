@@ -50,8 +50,8 @@ class EgoModelControl(nn.Module):
             self.speed[i] += acc * self.timestep
 
         eval_dict = {
-            "positions": torch.reshape(positions, [2, 1, 2]),
-            "yaws": torch.reshape(yaws, [2, 1, 1])
+            "positions": torch.reshape(positions, [num_of_scenes, 1, 2]),
+            "yaws": torch.reshape(yaws, [num_of_scenes, 1, 1])
         }
 
         return eval_dict

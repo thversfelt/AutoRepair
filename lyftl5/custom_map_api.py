@@ -4,9 +4,8 @@ import math
 from l5kit.configs.config import load_metadata
 from l5kit.data import MapAPI, DataManager
 from l5kit.data.map_api import InterpolationMethod
-from l5kit.data.proto.road_network_pb2 import GlobalId, Lane, MapElement
+from l5kit.data.proto.road_network_pb2 import Lane, MapElement
 from l5kit.rasterization.semantic_rasterizer import indices_in_bounds
-from l5kit.geometry.transform import transform_points
 from queue import PriorityQueue
 from collections import deque
 
@@ -69,7 +68,7 @@ class CustomMapAPI(MapAPI):
         closest_midpoints = midpoints[np.argsort(midpoints_distance)]  # Sort the midpoints by midpoint distance to the given position, ascending.
         return closest_midpoints
     
-    def get_shortest_route(self, start_position: np.ndarray, end_position: np.ndarray) -> List[str]:
+    def get_shortest_route(self, start_position: np.ndarray, end_position: np.ndarray) -> deque:
         """Implements Dijkstra's Algorithm (https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm).
 
         Args:
@@ -113,8 +112,7 @@ class CustomMapAPI(MapAPI):
         while start_lane_id not in shortest_route:
             shortest_route.appendleft(lane_id)  # Add the lane id to the shortest route.
             lane_id = visited_lanes_ids[lane_id]  # Set the lane id as the parent of the current lane.
-        
-        return list(shortest_route)
+        return shortest_route
     
     def get_element(self, element_id: str) -> MapElement:
         element_idx = self.ids_to_el[element_id]
