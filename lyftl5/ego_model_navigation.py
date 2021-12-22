@@ -1,6 +1,7 @@
 from collections import deque
+from os import close
 from typing import Dict
-from l5kit.geometry.transform import transform_point
+from l5kit.geometry.transform import transform_point, transform_points
 import numpy as np
 import torch
 import torch.nn as nn
@@ -53,35 +54,38 @@ class EgoModelNavigation(nn.Module):
             # Get the closest lane midpoints for the ego's current lane.
             current_lane_id = self.current_lane_id[scene_idx]
             current_lane_closest_midpoints = self.map_api.get_closest_lane_midpoints(ego_position, current_lane_id)
-            current_lane_closest_midpoint = current_lane_closest_midpoints[0]            
-            current_lane_closest_midpoint = transform_point(current_lane_closest_midpoint, ego_from_world)
-            current_lane_closest_midpoint_distance = np.linalg.norm(current_lane_closest_midpoint)
+            current_lane_closest_midpoints = transform_points(current_lane_closest_midpoints, ego_from_world)
+            current_lane_closest_midpoints = current_lane_closest_midpoints[current_lane_closest_midpoints[:,0] > 0]
 
             # Take the next lane of the route, or choose a random next lane that is connected to the current lane, if
             # the current lane is the last lane in the route.
             if len(route) > 0:
                 next_lane_id = route[0]  # Peek, don't pop.
             else:
-                next_lane_id = random.choice(self.map_api.get_ahead_lanes_ids(current_lane_id))
+                ahead_lanes_ids = self.map_api.get_ahead_lanes_ids(current_lane_id)
+                next_lane_id = random.choice(ahead_lanes_ids)
                 route.appendleft(next_lane_id)
-            
+
             # Get the closest lane midpoints for the ego's next lane.
             next_lane_closest_midpoints = self.map_api.get_closest_lane_midpoints(ego_position, next_lane_id)
-            next_lane_closest_midpoint = next_lane_closest_midpoints[0]
-            next_lane_closest_midpoint = transform_point(next_lane_closest_midpoint, ego_from_world)  
-            next_lane_closest_midpoint_distance = np.linalg.norm(next_lane_closest_midpoint)
+            next_lane_closest_midpoints = transform_points(next_lane_closest_midpoints, ego_from_world)
+            next_lane_closest_midpoints = next_lane_closest_midpoints[next_lane_closest_midpoints[:,0] > 0]
             
             # If the current lane is closer than the next lane, keep following the current lane's closest midpoint.
             # Otherwise, start following the next lane's closest midpoint.
-            if current_lane_closest_midpoint_distance < next_lane_closest_midpoint_distance:
-                closest_midpoint = current_lane_closest_midpoint
-            else:
-                closest_midpoint = next_lane_closest_midpoint
+            if len(current_lane_closest_midpoints) > 0:
+                closest_midpoint = current_lane_closest_midpoints[0]
+            elif len(next_lane_closest_midpoints) > 0:
+                closest_midpoint = next_lane_closest_midpoints[0]
                 current_lane_id = route.popleft()
                 self.current_lane_id[scene_idx] = current_lane_id
-            
+            else:
+                current_lane_id = route.popleft()
+                self.current_lane_id[scene_idx] = current_lane_id
+                continue
+
             # Steer input is proportional to the y-coordinate of the closest midpoint.
             steer[scene_idx] = closest_midpoint[1]
-        
-        eval_dict = {"steer": steer}
-        return eval_dict
+
+        data_batch["steer"] = steer
+        return data_batch

@@ -40,7 +40,9 @@ if __name__ == '__main__':
     # Setup the simulation.
     num_scenes_to_unroll = 2
     num_simulation_steps = ego_cfg["model_params"]["future_num_frames"]  # Only simulate for the number of future frames.
-    scenes_to_unroll = random.sample(range(0, len(eval_ego_zarr.scenes)), num_scenes_to_unroll)  # [0, 1]
+    scenes_to_unroll = random.sample(range(0, len(eval_ego_zarr.scenes)), num_scenes_to_unroll)
+    scenes_to_unroll = [90]
+    print(scenes_to_unroll)
 
     sim_cfg = SimulationConfig(use_ego_gt=False, use_agents_gt=True, disable_new_agents=False,
                                distance_th_far=500, distance_th_close=50, num_simulation_steps=num_simulation_steps,
