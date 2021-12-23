@@ -4,7 +4,7 @@ Automated Repair for Autonomous Driving Systems.
 
 ## Getting Started
 
-These instructions will cover usage information and for AutoRepair's docker container. 
+These instructions will cover usage information for AutoRepair. 
 
 ### Prerequisities
 
