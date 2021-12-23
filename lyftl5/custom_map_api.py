@@ -50,6 +50,67 @@ class CustomMapAPI(MapAPI):
         closest_lanes_ids = np.take(lanes_ids, lanes_indices)  # Get the ids of the sorted list of lane indices.
         return closest_lanes_ids
 
+    def get_route(self, trajectory: np.ndarray) -> List[str]:
+        visited_lanes_ids = {}
+        unvisited_lanes_ids = {}
+        
+        initial_position = trajectory[0]
+        final_position = trajectory[-1]
+        
+        initial_lanes_ids = self.get_lane_ids_at(initial_position)
+        final_lanes_ids = self.get_lane_ids_at(final_position)
+        
+        for initial_lane_id in initial_lanes_ids:
+            unvisited_lanes_ids[initial_lane_id] = None
+            
+        for frame_idx, position in enumerate(trajectory):
+            # Skip the first frame.
+            if frame_idx == 0: continue
+                
+            # Get the set of lanes at this position.
+            lane_ids = self.get_lane_ids_at(position)
+
+            for lane_id in lane_ids:
+                if lane_id in unvisited_lanes_ids:
+                    # The lane at this position is connected to a lane of a previous position, because it is in the
+                    # set of unvisited lanes, so visit it now.
+                    visited_lanes_ids[lane_id] = unvisited_lanes_ids[lane_id]
+                    del unvisited_lanes_ids[lane_id]
+                    
+                    # Add all connected lanes of the lane at this position to the set of unvisited lanes, setting
+                    # this lane as their parent.
+                    connected_lanes_ids = self.get_connected_lanes_ids(lane_id)
+                    for connected_lane_id in connected_lanes_ids:
+                        if connected_lane_id not in visited_lanes_ids:
+                            unvisited_lanes_ids[connected_lane_id] = lane_id
+
+        feasable_routes = []
+        for final_lane_id in final_lanes_ids:
+            if final_lane_id not in visited_lanes_ids: continue
+            # TODO: generate feasable routes.
+            print("FEASABLE ROUTE FOUND!")
+            
+        pass
+
+    def get_lane_ids_at(self, position: np.ndarray) -> List[str]:
+        """Gets the lanes at the given position.
+
+        Args:
+            position (np.ndarray): The position to get the lanes at.
+
+        Returns:
+            str: The lane ids of the lanes at the given position.
+        """
+        lane_ids = []
+        for element in self.elements:
+            if not self.is_lane(element): continue
+            lane_id = self.id_as_str(element.id)
+            lane_bounds = self.get_lane_bounds(lane_id)
+            if not self.in_bounds(position, lane_bounds): continue
+            lane_ids.append(lane_id)
+        return lane_ids
+            
+
     def get_closest_lane_midpoints(self, position: np.ndarray, lane_id: str) -> np.ndarray:
         """Gets a sorted list (ascending) of midpoints of the lane, defined by the lane id, that are closest to the given position.
 
@@ -78,12 +139,12 @@ class CustomMapAPI(MapAPI):
         Returns:
             List[str]: The route as a list of lane id's.
         """
-        start_lane_id = self.get_closest_lanes_ids(start_position)[0]
-        end_lane_id = self.get_closest_lanes_ids(end_position)[0]
+        start_lane_ids = self.get_closest_lanes_ids(start_position)[0]
+        end_lane_ids = self.get_closest_lanes_ids(end_position)[0]
         
         # A priority queue with tuples (distance, (lane_id, parent_lane_id)), which contains the distances from the 
         # start lane to the lane represented by lane_id, through the parent lane represented by parent_lane_id.
-        explored_lanes_ids = PriorityQueue() 
+        explored_lanes_ids = PriorityQueue()
         visited_lanes_ids = {}
         explored_lanes_ids.put((0, (start_lane_id, start_lane_id)))
         
@@ -113,7 +174,7 @@ class CustomMapAPI(MapAPI):
             shortest_route.appendleft(lane_id)  # Add the lane id to the shortest route.
             lane_id = visited_lanes_ids[lane_id]  # Set the lane id as the parent of the current lane.
         return shortest_route
-    
+
     def get_element(self, element_id: str) -> MapElement:
         element_idx = self.ids_to_el[element_id]
         element = self.elements[element_idx]
@@ -148,18 +209,47 @@ class CustomMapAPI(MapAPI):
             change_lanes_ids.append(change_right_lane_id)
         return change_lanes_ids
 
-    def get_approx_lane_length(self, lane_id: str) -> float:
-        lane = self.get_lane_coords(lane_id)
+    def get_lane_bounds(self, lane_id: str) -> np.ndarray:
+        lane_coords = self.get_lane_coords(lane_id)
         
         # Get the lane bounds.
-        x_min = min(np.min(lane["xyz_left"][:, 0]), np.min(lane["xyz_right"][:, 0]))
-        y_min = min(np.min(lane["xyz_left"][:, 1]), np.min(lane["xyz_right"][:, 1]))
-        x_max = max(np.max(lane["xyz_left"][:, 0]), np.max(lane["xyz_right"][:, 0]))
-        y_max = max(np.max(lane["xyz_left"][:, 1]), np.max(lane["xyz_right"][:, 1]))
+        x_min = min(np.min(lane_coords["xyz_left"][:, 0]), np.min(lane_coords["xyz_right"][:, 0]))
+        y_min = min(np.min(lane_coords["xyz_left"][:, 1]), np.min(lane_coords["xyz_right"][:, 1]))
+        x_max = max(np.max(lane_coords["xyz_left"][:, 0]), np.max(lane_coords["xyz_right"][:, 0]))
+        y_max = max(np.max(lane_coords["xyz_left"][:, 1]), np.max(lane_coords["xyz_right"][:, 1]))
+
+        bounds = np.asarray([[x_min, y_min], [x_max, y_max]])
+        return bounds
+
+    def in_bounds(self, position: np.ndarray, bounds: np.ndarray) -> bool:
+        x = position[0]
+        y = position[1]
+        
+        # Get the lane bounds.
+        x_min = bounds[0][0]
+        y_min = bounds[0][1]
+        x_max = bounds[1][0]
+        y_max = bounds[1][1]
+        
+        x_in = x > x_min and x < x_max
+        y_in = y > y_min and y < y_max
+        
+        in_bounds = x_in and y_in
+        return in_bounds
+
+    def get_approx_lane_length(self, lane_id: str) -> float:
+        bounds = self.get_lane_bounds(lane_id)
+        
+        # Get the lane bounds.
+        x_min = bounds[0][0]
+        y_min = bounds[0][1]
+        x_max = bounds[1][0]
+        y_max = bounds[1][1]
         
         # Approximate the lane length as the lane bounds diagional length.
         x_length = abs(x_max - x_min)
         y_length = abs(y_max - y_min)
+        
         lane_length = math.hypot(x_length, y_length)
         return lane_length
     

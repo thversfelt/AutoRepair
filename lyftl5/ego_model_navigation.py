@@ -25,20 +25,12 @@ class EgoModelNavigation(nn.Module):
             self.route = []
             self.current_lane_id = []
             for scene_idx in range(num_of_scenes):
-                start_position = data_batch["centroid"][scene_idx].cpu().numpy()
-                num_simulation_steps = len(data_batch["target_positions"][scene_idx])
-                
-                # The last target position is the end position.
-                end_position_idx = num_simulation_steps - 2
-                end_position = data_batch["target_positions"][scene_idx][end_position_idx].cpu().numpy()
                 world_from_ego = data_batch["world_from_agent"][scene_idx].cpu().numpy()
-                
-                # Transform the end position to the world's reference system.
-                end_position = transform_point(end_position, world_from_ego)
-                
-                # Determine the shortest route between the start and end position.
-                route = self.map_api.get_shortest_route(start_position, end_position)
-                
+                local_trajectory = data_batch["target_positions"][scene_idx].cpu().numpy()
+                # TODO: FILTER ON AVAILABILITIES
+                trajectory = transform_points(local_trajectory, world_from_ego)
+                route = self.map_api.get_route(trajectory)
+
                 # Pop the first lane of the route queue, which will be the ego's current lane.
                 current_lane_id = route.popleft()
                 self.route.append(route)
