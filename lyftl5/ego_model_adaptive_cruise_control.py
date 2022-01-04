@@ -103,7 +103,7 @@ class EgoModelAdaptiveCruiseControl(nn.Module):
             
             if leading_agent_track_id == -1:
                 acc[scene_idx] = 1.0
-            elif leading_agent_gap > 50 and ego_speed < self.map_api.get_lane_speed_limit(ego_lane_id):
+            elif ego_speed < leading_agent_speed:
                 acc[scene_idx] = 1.5
             elif ego_local_velocity[0] > 0:
                 acc[scene_idx] = -1.5

@@ -55,10 +55,10 @@ class CustomMapAPI(MapAPI):
         unvisited_lanes_ids = {}
         
         initial_position = trajectory[0]
-        final_position = trajectory[-1]
+        final_position = trajectory[-2]
         
-        initial_lanes_ids = self.get_lane_ids_at(initial_position)
-        final_lanes_ids = self.get_lane_ids_at(final_position)
+        initial_lanes_ids = self.get_lanes_ids_at(initial_position)
+        final_lanes_ids = self.get_lanes_ids_at(final_position)
         
         for initial_lane_id in initial_lanes_ids:
             unvisited_lanes_ids[initial_lane_id] = None
@@ -67,32 +67,38 @@ class CustomMapAPI(MapAPI):
             # Skip the first frame.
             if frame_idx == 0: continue
                 
-            # Get the set of lanes at this position.
-            lane_ids = self.get_lane_ids_at(position)
+            # Get the set of unvisited lanes at this position.
+            current_lanes_ids = []
+            for lane_id in unvisited_lanes_ids:
+                lane_bounds = self.get_lane_bounds(lane_id)
+                if not self.in_bounds(position, lane_bounds): continue
+                current_lanes_ids.append(lane_id)
+            
 
-            for lane_id in lane_ids:
-                if lane_id in unvisited_lanes_ids:
-                    # The lane at this position is connected to a lane of a previous position, because it is in the
-                    # set of unvisited lanes, so visit it now.
-                    visited_lanes_ids[lane_id] = unvisited_lanes_ids[lane_id]
-                    del unvisited_lanes_ids[lane_id]
-                    
-                    # Add all connected lanes of the lane at this position to the set of unvisited lanes, setting
-                    # this lane as their parent.
-                    connected_lanes_ids = self.get_connected_lanes_ids(lane_id)
-                    for connected_lane_id in connected_lanes_ids:
-                        if connected_lane_id not in visited_lanes_ids:
-                            unvisited_lanes_ids[connected_lane_id] = lane_id
+            for lane_id in current_lanes_ids:
+                # Visit this lane (add to set of visited lanes and remove from set of unvisited lanes).
+                visited_lanes_ids[lane_id] = unvisited_lanes_ids[lane_id]
+                del unvisited_lanes_ids[lane_id]
+                
+                # Add all connected lanes of the lane at this position to the set of unvisited lanes, setting
+                # this lane as their parent.
+                connected_lanes_ids = self.get_connected_lanes_ids(lane_id)
+                for connected_lane_id in connected_lanes_ids:
+                    if connected_lane_id not in visited_lanes_ids:
+                        unvisited_lanes_ids[connected_lane_id] = lane_id
 
-        feasable_routes = []
+        route = None
         for final_lane_id in final_lanes_ids:
             if final_lane_id not in visited_lanes_ids: continue
-            # TODO: generate feasable routes.
-            print("FEASABLE ROUTE FOUND!")
-            
-        pass
+            route = deque()
+            lane_id = final_lane_id
+            while not any(x in initial_lanes_ids for x in route):
+                route.appendleft(lane_id)  # Add the lane id to the route.
+                lane_id = visited_lanes_ids[lane_id]  # Set the lane id as the parent of the current lane.
+            break
+        return route
 
-    def get_lane_ids_at(self, position: np.ndarray) -> List[str]:
+    def get_lanes_ids_at(self, position: np.ndarray) -> List[str]:
         """Gets the lanes at the given position.
 
         Args:
@@ -101,14 +107,14 @@ class CustomMapAPI(MapAPI):
         Returns:
             str: The lane ids of the lanes at the given position.
         """
-        lane_ids = []
+        lanes_ids = []
         for element in self.elements:
             if not self.is_lane(element): continue
             lane_id = self.id_as_str(element.id)
             lane_bounds = self.get_lane_bounds(lane_id)
             if not self.in_bounds(position, lane_bounds): continue
-            lane_ids.append(lane_id)
-        return lane_ids
+            lanes_ids.append(lane_id)
+        return lanes_ids
             
 
     def get_closest_lane_midpoints(self, position: np.ndarray, lane_id: str) -> np.ndarray:
@@ -129,52 +135,6 @@ class CustomMapAPI(MapAPI):
         closest_midpoints = midpoints[np.argsort(midpoints_distance)]  # Sort the midpoints by midpoint distance to the given position, ascending.
         return closest_midpoints
     
-    def get_shortest_route(self, start_position: np.ndarray, end_position: np.ndarray) -> deque:
-        """Implements Dijkstra's Algorithm (https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm).
-
-        Args:
-            start_position (np.ndarray): Start position coordinates (x, y) in world reference system.
-            end_position (np.ndarray): End position coordinates (x, y) in world reference system.
-
-        Returns:
-            List[str]: The route as a list of lane id's.
-        """
-        start_lane_ids = self.get_closest_lanes_ids(start_position)[0]
-        end_lane_ids = self.get_closest_lanes_ids(end_position)[0]
-        
-        # A priority queue with tuples (distance, (lane_id, parent_lane_id)), which contains the distances from the 
-        # start lane to the lane represented by lane_id, through the parent lane represented by parent_lane_id.
-        explored_lanes_ids = PriorityQueue()
-        visited_lanes_ids = {}
-        explored_lanes_ids.put((0, (start_lane_id, start_lane_id)))
-        
-        # While the list of visisted lanes doesn't contain any end lane, keep searching.
-        while end_lane_id not in visited_lanes_ids:
-            # Get the unvisited lane that has the smallest distance to the start lane from the priority queue.
-            explored_lane = explored_lanes_ids.get()
-            explored_lane_distance = explored_lane[0]
-            explored_lane_id = explored_lane[1][0]
-            explored_lane_parent_id = explored_lane[1][1]
-            
-            # Add the explored lane to the set of visited lanes.
-            if explored_lane_id not in visited_lanes_ids:
-                visited_lanes_ids[explored_lane_id] = explored_lane_parent_id
-            
-            # Explore all the connected lanes that have not been visited yet, and append the distance from this lane to 
-            # that lane to the recorded distance from the start lane. 
-            for lane_id in self.get_connected_lanes_ids(explored_lane_id):
-                if lane_id not in visited_lanes_ids:
-                    lane_length = self.get_approx_lane_length(lane_id)
-                    explored_lanes_ids.put((explored_lane_distance + lane_length, (lane_id, explored_lane_id)))
-        
-        # Backtrack the output to get the shortest route.
-        shortest_route = deque()
-        lane_id = end_lane_id
-        while start_lane_id not in shortest_route:
-            shortest_route.appendleft(lane_id)  # Add the lane id to the shortest route.
-            lane_id = visited_lanes_ids[lane_id]  # Set the lane id as the parent of the current lane.
-        return shortest_route
-
     def get_element(self, element_id: str) -> MapElement:
         element_idx = self.ids_to_el[element_id]
         element = self.elements[element_idx]
@@ -271,6 +231,3 @@ class CustomMapAPI(MapAPI):
         midpoints_distance = np.linalg.norm(midpoints - position, axis=-1)  # Determine the distance between each midpoint and the given position.
         progress = progress[np.argsort(midpoints_distance)]  # Sort the midpoints by midpoint distance to the given position, ascending.
         return progress[0]
-
-    def get_lane_speed_limit(self, lane_id: str) -> float:
-        return 14.0

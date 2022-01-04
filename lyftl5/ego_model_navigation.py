@@ -55,7 +55,10 @@ class EgoModelNavigation(nn.Module):
                 next_lane_id = route[0]  # Peek, don't pop.
             else:
                 ahead_lanes_ids = self.map_api.get_ahead_lanes_ids(current_lane_id)
-                next_lane_id = random.choice(ahead_lanes_ids)
+                if len(ahead_lanes_ids) > 0:
+                    next_lane_id = random.choice(ahead_lanes_ids)
+                else:
+                    next_lane_id = current_lane_id
                 route.appendleft(next_lane_id)
 
             # Get the closest lane midpoints for the ego's next lane.
