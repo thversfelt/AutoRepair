@@ -33,17 +33,13 @@ class CustomMapAPI(MapAPI):
         for initial_lane_id in initial_lanes_ids:
             unvisited_lanes_ids[initial_lane_id] = None
             
-        for frame_idx, position in enumerate(trajectory):
-            # Skip the first frame.
-            if frame_idx == 0: continue
-                
+        for position in trajectory:
             # Get the set of unvisited lanes at this position.
             current_lanes_ids = []
             for lane_id in unvisited_lanes_ids:
                 lane_bounds = self.get_lane_bounds(lane_id)
                 if not self.in_bounds(position, lane_bounds): continue
                 current_lanes_ids.append(lane_id)
-            
 
             for lane_id in current_lanes_ids:
                 # Visit this lane (add to set of visited lanes and remove from set of unvisited lanes).

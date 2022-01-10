@@ -12,17 +12,16 @@ from lyftl5.ego_model_perception import EgoModelPerception
 class EgoModel(nn.Module):
     def __init__(self, map_api: CustomMapAPI):
         super().__init__()
-        self.map_api = map_api
         self.perception = EgoModelPerception(map_api)
         self.control = EgoModelControl()
         self.navigation = EgoModelNavigation(self.perception)
-        self.adaptive_cruise_control = EgoModelAdaptiveCruiseControl(map_api)
+        self.adaptive_cruise_control = EgoModelAdaptiveCruiseControl(self.perception)
 
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         self.perception.forward(data_batch)
         
         self.navigation.forward(data_batch)
-        #self.adaptive_cruise_control.forward(data_batch)
+        self.adaptive_cruise_control.forward(data_batch)
         
         num_of_scenes = len(data_batch['scene_index'])
         #data_batch["steer"] = torch.zeros(num_of_scenes)
