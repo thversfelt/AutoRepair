@@ -34,7 +34,8 @@ class EgoModelControl(nn.Module):
 
             steer = torch.clip(steer, self.min_steer, self.max_steer)
             acc = torch.clip(acc, self.min_acc, self.max_acc)
-
+            
+            self.speed[i] += acc * self.timestep
             beta = torch.arctan(0.5 * torch.tan(steer))
             velocity = self.speed[i] * torch.tensor([
                 torch.cos(beta),
@@ -46,8 +47,6 @@ class EgoModelControl(nn.Module):
 
             positions[i] = position
             yaws[i] = yaw
-
-            self.speed[i] += acc * self.timestep
 
         eval_dict = {
             "positions": torch.reshape(positions, [num_of_scenes, 1, 2]),

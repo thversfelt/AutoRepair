@@ -20,42 +20,12 @@ class CustomMapAPI(MapAPI):
 
         self.lane_cfg_params = cfg["data_generation_params"]["lane_params"]
 
-    def get_closest_lanes_ids(self, position: np.ndarray) -> List[str]:
-        """Gets the closest lane of the given position.
-
-        Args:
-            position (np.ndarray): The position to get the closest lane of.
-
-        Returns:
-            str: The lane id of the closest lane to the given position.
-        """
-        max_lane_distance = self.lane_cfg_params["max_retrieval_distance_m"]  # Only consider lanes within this distance to the given position.
-
-        # filter first by bounds and then by distance, so that we always take the closest lanes
-        lanes_ids = self.bounds_info["lanes"]["ids"]
-        lanes_bounds = self.bounds_info["lanes"]["bounds"]
-        lanes_indices = indices_in_bounds(position, lanes_bounds, max_lane_distance)
-        if len(lanes_indices) == 0:
-            return None  # There are no lanes close to the given position, return None.
-        
-        lanes_distances = []
-        for lane_idx in lanes_indices:
-            lane_id = lanes_ids[lane_idx]  # Get the id of the line index (id != index, id is a string, index and integer index of a list).
-            closest_midpoints = self.get_closest_lane_midpoints(position, lane_id)  # Determine closest lane midpoints to the given position.
-            closest_midpoint = closest_midpoints[0]  # The closest midpoint is the first element of the sorted list of lane midpoints.
-            closest_midpoint_distance = np.linalg.norm(closest_midpoint - position)  # Determine distance from the closest midpoint to the given position.
-            lanes_distances.append(closest_midpoint_distance)  # Assign the lane distance to be the closest midpoint to the given position.
-        lanes_indices = lanes_indices[np.argsort(lanes_distances)]  # Sort the lane indices by lane distance, ascending.
-        
-        closest_lanes_ids = np.take(lanes_ids, lanes_indices)  # Get the ids of the sorted list of lane indices.
-        return closest_lanes_ids
-
     def get_route(self, trajectory: np.ndarray) -> List[str]:
         visited_lanes_ids = {}
         unvisited_lanes_ids = {}
         
         initial_position = trajectory[0]
-        final_position = trajectory[-2]
+        final_position = trajectory[-1]
         
         initial_lanes_ids = self.get_lanes_ids_at(initial_position)
         final_lanes_ids = self.get_lanes_ids_at(final_position)
@@ -115,7 +85,6 @@ class CustomMapAPI(MapAPI):
             if not self.in_bounds(position, lane_bounds): continue
             lanes_ids.append(lane_id)
         return lanes_ids
-            
 
     def get_closest_lane_midpoints(self, position: np.ndarray, lane_id: str) -> np.ndarray:
         """Gets a sorted list (ascending) of midpoints of the lane, defined by the lane id, that are closest to the given position.

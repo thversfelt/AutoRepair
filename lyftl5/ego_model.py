@@ -15,17 +15,17 @@ class EgoModel(nn.Module):
         self.map_api = map_api
         self.perception = EgoModelPerception(map_api)
         self.control = EgoModelControl()
-        self.navigation = EgoModelNavigation(map_api)
+        self.navigation = EgoModelNavigation(self.perception)
         self.adaptive_cruise_control = EgoModelAdaptiveCruiseControl(map_api)
 
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         self.perception.forward(data_batch)
         
         self.navigation.forward(data_batch)
-        self.adaptive_cruise_control.forward(data_batch)
+        #self.adaptive_cruise_control.forward(data_batch)
         
-        #num_of_scenes = len(data_batch['scene_index'])
+        num_of_scenes = len(data_batch['scene_index'])
         #data_batch["steer"] = torch.zeros(num_of_scenes)
-        #data_batch["acc"] = 0.0 * torch.ones(num_of_scenes)
+        data_batch["acc"] = 0.0 * torch.ones(num_of_scenes)
         
         return self.control.forward(data_batch)
