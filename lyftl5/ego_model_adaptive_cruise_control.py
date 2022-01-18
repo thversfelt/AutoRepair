@@ -20,40 +20,19 @@ class EgoModelAdaptiveCruiseControl(nn.Module):
         acc = torch.zeros([num_of_scenes], dtype=torch.float64)
         for scene_idx in range(num_of_scenes):
             
-            ego_route = self.perception.ego_route[scene_idx]
+            # If there is no leader agent, just use "normal" acceleration.
+            if self.perception.ego_leader[scene_idx] == None:
+                acc[scene_idx] = 1.0
+                continue
             
-            leading_agent_id = None
-            leading_agent_distance = None
-            leading_agent_speed = None
+            # Get the agent id of the leader.
+            agent_id = self.perception.ego_leader[scene_idx]
             
-            for agent_id, agent_route in self.perception.agents_route[scene_idx].items():
-                
-                # Ensure the ego and agent share one or more lanes in their route.
-                if set(ego_route).isdisjoint(agent_route):
-                    continue
-                
-                # TODO: Get the agent's direction.
-                # TODO: Ensure the agent is pointed in similar direction:.
-                # if dot(ego_direction, agent_direction) < 0:
-                #     continue
-                
-                # Get the agent's current position.
-                agent_local_position = self.perception.agents_local_position[scene_idx][agent_id]
-
-                # Ensure the agent is ahead of the ego.
-                if agent_local_position[0] < 0:
-                    continue
-                
-                # Determine the agent's distance to the ego.
-                agent_distance = np.linalg.norm(agent_local_position)
-                print(agent_distance)
-                
-            #if leading_agent_track_id == -1:
-            #    acc[scene_idx] = 1.0
-            #elif ego_speed < leading_agent_speed:
-            #    acc[scene_idx] = 1.5
-            #elif ego_local_velocity[0] > 0:
-            #    acc[scene_idx] = -1.5
+            # 
+            if self.perception.ego_speed[scene_idx] < self.perception.agents_speed[scene_idx][agent_id]:
+                acc[scene_idx] = 1.5
+            else:
+                acc[scene_idx] = -1.5
 
         data_batch["acc"] = acc
         return data_batch

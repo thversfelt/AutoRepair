@@ -23,8 +23,4 @@ class EgoModel(nn.Module):
         self.navigation.forward(data_batch)
         self.adaptive_cruise_control.forward(data_batch)
         
-        num_of_scenes = len(data_batch['scene_index'])
-        #data_batch["steer"] = torch.zeros(num_of_scenes)
-        data_batch["acc"] = 0.0 * torch.ones(num_of_scenes)
-        
         return self.control.forward(data_batch)

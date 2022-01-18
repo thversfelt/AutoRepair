@@ -18,20 +18,28 @@ class EgoModelPerception(nn.Module):
         self.ego_position = {}
         self.ego_route = {}  # For each scene id, list of lane id's.
         self.ego_speed = {}
+        self.ego_leader = {}
+        self.ego_leader_distance = {}
         
         self.agents_local_position = {}
         self.agents_position = {}
+        self.agents_parked = {}
         self.agents_route = {}  # For each scene id, dictionary of agent id's with their corresponding routes (lists of lane id's).
         self.agents_speed = {}
 
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         self.update_ego_position(data_batch)
-        self.update_ego_route(data_batch)
-        self.update_ego_speed(data_batch)
-        
         self.update_agents_position(data_batch)
+        
+        self.update_agents_parked(data_batch)
+        
+        self.update_ego_route(data_batch)
         self.update_agents_route(data_batch)
+        
+        self.update_ego_speed(data_batch)
         self.update_agents_speed(data_batch)
+        
+        self.update_ego_leader(data_batch)
 
     def update_ego_position(self, data_batch: Dict[str, torch.Tensor]):
         num_of_scenes = len(data_batch['scene_index'])
@@ -86,6 +94,20 @@ class EgoModelPerception(nn.Module):
                 
                 # Assign the agent's position in this scene.
                 self.agents_position[scene_idx][agent_id] = position
+
+    def update_agents_parked(self, data_batch: Dict[str, torch.Tensor]):
+        num_of_scenes = len(data_batch['scene_index'])
+        
+        for scene_idx in range(num_of_scenes):
+            # Get the ego reference system to world reference system transformation matrix.
+            world_from_ego = data_batch["world_from_agent"][scene_idx].cpu().numpy()
+            
+            # Initialize the agents parked dictionary for each scene.
+            if scene_idx not in self.agents_parked:
+                self.agents_parked[scene_idx] = {}
+            
+            # Get the list of agent id's in this scene.
+            agents_ids = data_batch["all_other_agents_track_ids"][scene_idx].cpu().numpy()
 
     def update_ego_route(self, data_batch: Dict[str, torch.Tensor]):
         num_of_scenes = len(data_batch['scene_index'])
@@ -265,3 +287,42 @@ class EgoModelPerception(nn.Module):
                     
                     # Set the agent's speed for this scene.
                     self.agents_speed[scene_idx][agent_id] = speed
+
+    def update_ego_leader(self, data_batch: Dict[str, torch.Tensor]):
+        num_of_scenes = len(data_batch['scene_index'])
+        
+        for scene_idx in range(num_of_scenes):
+
+            self.ego_leader[scene_idx] = None
+
+            for agent_idx, (agent_id, agent_route) in enumerate(self.agents_route[scene_idx].items()):
+                 # Ensure the ego and agent share one or more lanes in their route.
+                if set(self.ego_route[scene_idx]).isdisjoint(set(agent_route)):
+                    continue
+                
+                # Get the agent's yaw from the ego.
+                agent_local_yaw = data_batch["all_other_agents_history_yaws"][scene_idx][agent_idx][0].cpu().numpy()
+                
+                # The threshold under which the agent is considered to be facing a similar direction as the ego [rad].
+                similar_direction_threshold = 1.57
+                
+                # Ensure the agent is pointed in a similar direction.
+                if abs(agent_local_yaw) > similar_direction_threshold:
+                    continue
+                
+                # Get the agent's current position.
+                agent_local_position = self.agents_local_position[scene_idx][agent_id]
+
+                # Ensure the agent is ahead of the ego.
+                if agent_local_position[0] < 0:
+                    continue
+                
+                # Determine the agent's distance to the ego.
+                agent_distance = np.linalg.norm(agent_local_position)
+                
+                if self.ego_leader[scene_idx] == None:
+                    self.ego_leader[scene_idx] = agent_id
+                    self.ego_leader_distance[scene_idx] = agent_distance
+                elif self.ego_leader_distance[scene_idx] > agent_distance:
+                    self.ego_leader[scene_idx] = agent_id
+                    self.ego_leader_distance[scene_idx] = agent_distance
