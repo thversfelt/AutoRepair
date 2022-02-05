@@ -214,9 +214,6 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Visual Studio Code
-.vscode/
-
 # Lyft Level 5 dataset
 lyftl5/tmp/
 
