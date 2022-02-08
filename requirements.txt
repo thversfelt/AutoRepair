@@ -1,4 +1,7 @@
 astor==0.8.1
+bokeh==2.4.1
 gym==0.21.0
 highway_env==1.4
-numpy==1.20.1
+l5kit==1.5.0
+numpy==1.21.4
+torch==1.10.0
