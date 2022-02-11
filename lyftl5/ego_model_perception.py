@@ -23,15 +23,12 @@ class EgoModelPerception(nn.Module):
         
         self.agents_local_position = {}
         self.agents_position = {}
-        self.agents_parked = {}
         self.agents_route = {}  # For each scene id, dictionary of agent id's with their corresponding routes (lists of lane id's).
         self.agents_speed = {}
 
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         self.update_ego_position(data_batch)
         self.update_agents_position(data_batch)
-        
-        self.update_agents_parked(data_batch)
         
         self.update_ego_route(data_batch)
         self.update_agents_route(data_batch)
@@ -95,20 +92,6 @@ class EgoModelPerception(nn.Module):
                 # Assign the agent's position in this scene.
                 self.agents_position[scene_idx][agent_id] = position
 
-    def update_agents_parked(self, data_batch: Dict[str, torch.Tensor]):
-        num_of_scenes = len(data_batch['scene_index'])
-        
-        for scene_idx in range(num_of_scenes):
-            # Get the ego reference system to world reference system transformation matrix.
-            world_from_ego = data_batch["world_from_agent"][scene_idx].cpu().numpy()
-            
-            # Initialize the agents parked dictionary for each scene.
-            if scene_idx not in self.agents_parked:
-                self.agents_parked[scene_idx] = {}
-            
-            # Get the list of agent id's in this scene.
-            agents_ids = data_batch["all_other_agents_track_ids"][scene_idx].cpu().numpy()
-
     def update_ego_route(self, data_batch: Dict[str, torch.Tensor]):
         num_of_scenes = len(data_batch['scene_index'])
 
@@ -140,6 +123,15 @@ class EgoModelPerception(nn.Module):
                 # Get the ego's current position.
                 position = self.ego_position[scene_idx]
                 
+                # Get the current lane's id.
+                current_lane_id = self.ego_route[scene_idx][0]
+                
+                # Get the current lane's bounds.
+                current_lane_bounds = self.map_api.get_lane_bounds(current_lane_id)
+                
+                # Determine if the ego is in the next lane.
+                in_current_lane = self.map_api.in_bounds(position, current_lane_bounds)
+                
                 # Get the next lane's id.
                 next_lane_id = self.ego_route[scene_idx][1]
                 
@@ -150,14 +142,17 @@ class EgoModelPerception(nn.Module):
                 in_next_lane = self.map_api.in_bounds(position, next_lane_bounds)
                 
                 # The first lane of the route is not the current lane anymore, remove it.
-                if in_next_lane:
+                if not in_current_lane:
                     self.ego_route[scene_idx].popleft()
 
             if len(self.ego_route[scene_idx]) == 1:
                 current_lane_id = self.ego_route[scene_idx][0]
                 ahead_lanes_ids = self.map_api.get_ahead_lanes_ids(current_lane_id)
-                next_lane_id = random.choice(ahead_lanes_ids)
-                self.ego_route[scene_idx].append(next_lane_id)
+                if len(ahead_lanes_ids) > 0:
+                    next_lane_id = random.choice(ahead_lanes_ids)
+                    self.ego_route[scene_idx].append(next_lane_id)
+                else:
+                    self.ego_route[scene_idx].append(current_lane_id)
 
     def update_agents_route(self, data_batch: Dict[str, torch.Tensor]):
         num_of_scenes = len(data_batch['scene_index'])
@@ -197,6 +192,18 @@ class EgoModelPerception(nn.Module):
                     # Assign this agent's route in this scene.
                     self.agents_route[scene_idx][agent_id] = route
                 else:
+                    # Has a route.
+                    has_route = self.agents_route[scene_idx][agent_id] != None
+                    
+                    if not has_route:
+                        continue
+                    
+                    # Has next lane.
+                    has_next_lane = len(self.agents_route[scene_idx][agent_id]) > 1
+                    
+                    if not has_next_lane:
+                        continue
+                    
                     # Get the agent's current position.
                     position = self.agents_position[scene_idx][agent_id]
                     
@@ -212,10 +219,6 @@ class EgoModelPerception(nn.Module):
                     # The first lane of the route is not the current lane anymore, remove it.
                     if in_next_lane:
                         self.agents_route[scene_idx][agent_id].popleft()
-
-                if len(self.agents_route[scene_idx][agent_id]) == 1:
-                    current_lane_id = self.agents_route[scene_idx][agent_id][0]
-                    self.agents_route[scene_idx][agent_id].append(current_lane_id)
 
     def update_ego_speed(self, data_batch: Dict[str, torch.Tensor]):
         num_of_scenes = len(data_batch['scene_index'])
@@ -262,7 +265,7 @@ class EgoModelPerception(nn.Module):
                 if agent_id == 0:
                     continue
                 
-                if scene_idx not in self.agents_speed:
+                if agent_id not in self.agents_speed[scene_idx]:
                     # Set the initial speed of the agent in the scene.
                     self.agents_speed[scene_idx][agent_id] = 0.0
                 else:
@@ -283,7 +286,7 @@ class EgoModelPerception(nn.Module):
                     previous_position = transform_point(previous_position, world_from_ego)
                     
                     # Calculate the agent's speed.
-                    speed =  np.linalg.norm(position - previous_position) / self.timestep
+                    speed = np.linalg.norm(position - previous_position) / self.timestep
                     
                     # Set the agent's speed for this scene.
                     self.agents_speed[scene_idx][agent_id] = speed
@@ -296,6 +299,10 @@ class EgoModelPerception(nn.Module):
             self.ego_leader[scene_idx] = None
 
             for agent_idx, (agent_id, agent_route) in enumerate(self.agents_route[scene_idx].items()):
+                # Ensure the agent has a route.
+                if agent_route == None:
+                    continue
+                
                  # Ensure the ego and agent share one or more lanes in their route.
                 if set(self.ego_route[scene_idx]).isdisjoint(set(agent_route)):
                     continue
@@ -314,7 +321,7 @@ class EgoModelPerception(nn.Module):
                 agent_local_position = self.agents_local_position[scene_idx][agent_id]
 
                 # Ensure the agent is ahead of the ego.
-                if agent_local_position[0] < 0:
+                if agent_local_position[0] > 0:
                     continue
                 
                 # Determine the agent's distance to the ego.
