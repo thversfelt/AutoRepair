@@ -38,8 +38,9 @@ class EgoModelNavigation(nn.Module):
                     closest_midpoint = lane_closest_midpoints[0]
                     break
 
-            # Steer input is proportional to the y-coordinate of the closest midpoint.
-            steer[scene_idx] = 0.5 * closest_midpoint[1]
+            if closest_midpoint is not None:
+                # Steer input is proportional to the y-coordinate of the closest midpoint.
+                steer[scene_idx] = 0.5 * closest_midpoint[1]
         
         data_batch["steer"] = steer
         return data_batch

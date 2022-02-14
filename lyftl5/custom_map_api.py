@@ -1,3 +1,4 @@
+import enum
 from typing import List
 import numpy as np
 import math
@@ -8,6 +9,8 @@ from l5kit.data.proto.road_network_pb2 import Lane, MapElement
 from l5kit.rasterization.semantic_rasterizer import indices_in_bounds
 from queue import PriorityQueue
 from collections import deque
+
+from sqlalchemy import false
 
 
 class CustomMapAPI(MapAPI):
@@ -40,8 +43,8 @@ class CustomMapAPI(MapAPI):
             # Get the set of unvisited lanes at this position.
             current_lanes_ids = []
             for lane_id in unvisited_lanes_ids:
-                lane_bounds = self.get_lane_bounds(lane_id)
-                if not self.in_bounds(position, lane_bounds): continue
+                if not self.in_lane_bounds(position, lane_id): continue
+                if not self.in_lane(position, lane_id): continue
                 current_lanes_ids.append(lane_id)
 
             for lane_id in current_lanes_ids:
@@ -80,8 +83,7 @@ class CustomMapAPI(MapAPI):
         for element in self.elements:
             if not self.is_lane(element): continue
             lane_id = self.id_as_str(element.id)
-            lane_bounds = self.get_lane_bounds(lane_id)
-            if not self.in_bounds(position, lane_bounds): continue
+            if not self.in_lane_bounds(position, lane_id): continue
             lanes_ids.append(lane_id)
         return lanes_ids
 
@@ -137,7 +139,7 @@ class CustomMapAPI(MapAPI):
             change_lanes_ids.append(change_right_lane_id)
         return change_lanes_ids
 
-    def get_lane_bounds(self, lane_id: str) -> np.ndarray:
+    def in_lane_bounds(self, position: np.ndarray, lane_id: str) -> bool:
         lane_coords = self.get_lane_coords(lane_id)
         
         # Get the lane bounds.
@@ -147,7 +149,40 @@ class CustomMapAPI(MapAPI):
         y_max = max(np.max(lane_coords["xyz_left"][:, 1]), np.max(lane_coords["xyz_right"][:, 1]))
 
         bounds = np.asarray([[x_min, y_min], [x_max, y_max]])
-        return bounds
+        return self.in_bounds(position, bounds)
+
+    def in_lane(self, position: np.ndarray, lane_id: str) -> bool:
+        
+        x = position[0]
+        y = position[1]
+        
+        lane_coords = self.get_lane_coords(lane_id)
+        lane_left_boundary = lane_coords["xyz_left"][:, :2]
+        lane_right_boundary = lane_coords["xyz_right"][:, :2]
+        poly = np.concatenate([lane_left_boundary, lane_right_boundary[::-1], [lane_left_boundary[0]]])
+        
+        import matplotlib.pyplot as plt
+        xs, ys = zip(*poly) #create lists of x and y values
+        plt.figure()
+        plt.scatter(x, y, color='green')
+        plt.plot(xs,ys) 
+        plt.show()
+        
+        n = len(poly)
+        inside = False
+
+        p1x,p1y = poly[0]
+        for i in range(n+1):
+            p2x,p2y = poly[i % n]
+            if y > min(p1y,p2y):
+                if y <= max(p1y,p2y):
+                    if x <= max(p1x,p2x):
+                        if p1y != p2y:
+                            xints = (y-p1y)*(p2x-p1x)/(p2y-p1y)+p1x
+                        if p1x == p2x or x <= xints:
+                            inside = not inside
+            p1x,p1y = p2x,p2y
+        return inside
 
     def in_bounds(self, position: np.ndarray, bounds: np.ndarray) -> bool:
         x = position[0]
@@ -164,19 +199,3 @@ class CustomMapAPI(MapAPI):
         
         in_bounds = x_in and y_in
         return in_bounds
-
-    def get_approx_lane_length(self, lane_id: str) -> float:
-        bounds = self.get_lane_bounds(lane_id)
-        
-        # Get the lane bounds.
-        x_min = bounds[0][0]
-        y_min = bounds[0][1]
-        x_max = bounds[1][0]
-        y_max = bounds[1][1]
-        
-        # Approximate the lane length as the lane bounds diagional length.
-        x_length = abs(x_max - x_min)
-        y_length = abs(y_max - y_min)
-        
-        lane_length = math.hypot(x_length, y_length)
-        return lane_length

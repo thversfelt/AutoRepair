@@ -1,4 +1,5 @@
 import random
+from turtle import pos
 from l5kit.geometry.transform import transform_point, transform_points
 import numpy as np
 import torch
@@ -120,29 +121,20 @@ class EgoModelPerception(nn.Module):
                 # Assign the ego's route in this scene.
                 self.ego_route[scene_idx] = route
             else:
+                # Has next lane.
+                has_next_lane = len(self.ego_route[scene_idx]) > 1
+                
+                if not has_next_lane:
+                    continue
+                
                 # Get the ego's current position.
                 position = self.ego_position[scene_idx]
-                
-                # Get the current lane's id.
-                current_lane_id = self.ego_route[scene_idx][0]
-                
-                # Get the current lane's bounds.
-                current_lane_bounds = self.map_api.get_lane_bounds(current_lane_id)
-                
-                # Determine if the ego is in the next lane.
-                in_current_lane = self.map_api.in_bounds(position, current_lane_bounds)
                 
                 # Get the next lane's id.
                 next_lane_id = self.ego_route[scene_idx][1]
                 
-                # Get the next lane's bounds.
-                next_lane_bounds = self.map_api.get_lane_bounds(next_lane_id)
-                
-                # Determine if the ego is in the next lane.
-                in_next_lane = self.map_api.in_bounds(position, next_lane_bounds)
-                
                 # The first lane of the route is not the current lane anymore, remove it.
-                if not in_current_lane:
+                if self.map_api.in_lane_bounds(position, next_lane_id):
                     self.ego_route[scene_idx].popleft()
 
             if len(self.ego_route[scene_idx]) == 1:
@@ -151,8 +143,6 @@ class EgoModelPerception(nn.Module):
                 if len(ahead_lanes_ids) > 0:
                     next_lane_id = random.choice(ahead_lanes_ids)
                     self.ego_route[scene_idx].append(next_lane_id)
-                else:
-                    self.ego_route[scene_idx].append(current_lane_id)
 
     def update_agents_route(self, data_batch: Dict[str, torch.Tensor]):
         num_of_scenes = len(data_batch['scene_index'])
@@ -210,14 +200,8 @@ class EgoModelPerception(nn.Module):
                     # Get the next lane's id.
                     next_lane_id = self.agents_route[scene_idx][agent_id][1]
                     
-                    # Get the next lane's bounds.
-                    next_lane_bounds = self.map_api.get_lane_bounds(next_lane_id)
-                    
-                    # Determine if the ego is in the next lane.
-                    in_next_lane = self.map_api.in_bounds(position, next_lane_bounds)
-                    
                     # The first lane of the route is not the current lane anymore, remove it.
-                    if in_next_lane:
+                    if self.map_api.in_lane_bounds(position, next_lane_id):
                         self.agents_route[scene_idx][agent_id].popleft()
 
     def update_ego_speed(self, data_batch: Dict[str, torch.Tensor]):
