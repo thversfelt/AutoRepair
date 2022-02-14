@@ -26,7 +26,7 @@ class CustomMapAPI(MapAPI):
     def get_route(self, trajectory: np.ndarray) -> List[str]:
         if len(trajectory) == 0:
             return None
-        
+
         visited_lanes_ids = {}
         unvisited_lanes_ids = {}
         
@@ -38,37 +38,57 @@ class CustomMapAPI(MapAPI):
         
         for initial_lane_id in initial_lanes_ids:
             unvisited_lanes_ids[initial_lane_id] = None
-            
+
         for position in trajectory:
-            # Get the set of unvisited lanes at this position.
+            # Get the lanes at this position.
             current_lanes_ids = []
             for lane_id in unvisited_lanes_ids:
-                if not self.in_lane_bounds(position, lane_id): continue
-                if not self.in_lane(position, lane_id): continue
-                current_lanes_ids.append(lane_id)
+                if self.in_lane(position, lane_id):
+                    current_lanes_ids.append(lane_id)
 
             for lane_id in current_lanes_ids:
-                # Visit this lane (add to set of visited lanes and remove from set of unvisited lanes).
+                # Visit this lane.
                 visited_lanes_ids[lane_id] = unvisited_lanes_ids[lane_id]
                 del unvisited_lanes_ids[lane_id]
                 
-                # Add all connected lanes of the lane at this position to the set of unvisited lanes, setting
-                # this lane as their parent.
-                connected_lanes_ids = self.get_connected_lanes_ids(lane_id)
-                for connected_lane_id in connected_lanes_ids:
-                    if connected_lane_id not in visited_lanes_ids:
-                        unvisited_lanes_ids[connected_lane_id] = lane_id
-
+                # Add all connected lanes (and their connected lanes) of the lane at this position to the set of 
+                # unvisited lanes, setting this lane as their parent.
+                for connected_lane_id in self.get_connected_lanes_ids(lane_id):
+                    unvisited_lanes_ids[connected_lane_id] = lane_id
+        
+        # Backtrack the algorithm to obtain a feasible route.
         route = None
         for final_lane_id in final_lanes_ids:
             if final_lane_id not in visited_lanes_ids: continue
             route = deque()
             lane_id = final_lane_id
             while not any(x in initial_lanes_ids for x in route):
-                route.appendleft(lane_id)  # Add the lane id to the route.
-                lane_id = visited_lanes_ids[lane_id]  # Set the lane id as the parent of the current lane.
+                route.appendleft(lane_id)
+                lane_id = visited_lanes_ids[lane_id]
             break
+        
+        # import matplotlib.pyplot as plt
+        # plt.figure()
+        # for visited_lane_id in visited_lanes_ids:
+        #     lane_polygon = self.get_lane_polygon(visited_lane_id)
+        #     xs, ys = zip(*lane_polygon) #create lists of x and y values
+        #     plt.plot(xs,ys, color='green')
+        # for unvisited_lane_id in unvisited_lanes_ids:
+        #     lane_polygon = self.get_lane_polygon(unvisited_lane_id)
+        #     xs, ys = zip(*lane_polygon) #create lists of x and y values
+        #     plt.plot(xs,ys, color='red')
+        # for lane_id in route:
+        #     lane_polygon = self.get_lane_polygon(lane_id)
+        #     xs, ys = zip(*lane_polygon) #create lists of x and y values
+        #     plt.plot(xs,ys, color='blue')
+        # for position in trajectory:
+        #     x = position[0]
+        #     y = position[1]
+        #     plt.scatter(x, y, color='black', s=1)
+        # plt.show()
+        
         return route
+    
 
     def get_lanes_ids_at(self, position: np.ndarray) -> List[str]:
         """Gets the lanes at the given position.
@@ -83,7 +103,7 @@ class CustomMapAPI(MapAPI):
         for element in self.elements:
             if not self.is_lane(element): continue
             lane_id = self.id_as_str(element.id)
-            if not self.in_lane_bounds(position, lane_id): continue
+            if not self.in_lane(position, lane_id): continue
             lanes_ids.append(lane_id)
         return lanes_ids
 
@@ -139,6 +159,11 @@ class CustomMapAPI(MapAPI):
             change_lanes_ids.append(change_right_lane_id)
         return change_lanes_ids
 
+    def in_lane(self, position: np.ndarray, lane_id: str) -> bool:
+        if not self.in_lane_bounds(position, lane_id): return False
+        if not self.in_lane_exact(position, lane_id): return False
+        return True
+
     def in_lane_bounds(self, position: np.ndarray, lane_id: str) -> bool:
         lane_coords = self.get_lane_coords(lane_id)
         
@@ -151,26 +176,16 @@ class CustomMapAPI(MapAPI):
         bounds = np.asarray([[x_min, y_min], [x_max, y_max]])
         return self.in_bounds(position, bounds)
 
-    def in_lane(self, position: np.ndarray, lane_id: str) -> bool:
-        
+    def in_lane_exact(self, position: np.ndarray, lane_id: str) -> bool:
         x = position[0]
         y = position[1]
-        
         lane_coords = self.get_lane_coords(lane_id)
         lane_left_boundary = lane_coords["xyz_left"][:, :2]
         lane_right_boundary = lane_coords["xyz_right"][:, :2]
         poly = np.concatenate([lane_left_boundary, lane_right_boundary[::-1], [lane_left_boundary[0]]])
-        
-        import matplotlib.pyplot as plt
-        xs, ys = zip(*poly) #create lists of x and y values
-        plt.figure()
-        plt.scatter(x, y, color='green')
-        plt.plot(xs,ys) 
-        plt.show()
-        
+
         n = len(poly)
         inside = False
-
         p1x,p1y = poly[0]
         for i in range(n+1):
             p2x,p2y = poly[i % n]
@@ -182,7 +197,15 @@ class CustomMapAPI(MapAPI):
                         if p1x == p2x or x <= xints:
                             inside = not inside
             p1x,p1y = p2x,p2y
+
         return inside
+
+    def get_lane_polygon(self, lane_id: str) -> np.ndarray:
+        lane_coords = self.get_lane_coords(lane_id)
+        lane_left_boundary = lane_coords["xyz_left"][:, :2]
+        lane_right_boundary = lane_coords["xyz_right"][:, :2]
+        lane_polygon = np.concatenate([lane_left_boundary, lane_right_boundary[::-1], [lane_left_boundary[0]]])
+        return lane_polygon
 
     def in_bounds(self, position: np.ndarray, bounds: np.ndarray) -> bool:
         x = position[0]

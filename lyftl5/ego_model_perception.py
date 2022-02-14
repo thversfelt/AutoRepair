@@ -101,8 +101,6 @@ class EgoModelPerception(nn.Module):
             world_from_ego = data_batch["world_from_agent"][scene_idx].cpu().numpy()
             
             if scene_idx not in self.ego_route:
-                # TODO: ADD HISTORY POSITIONS AND AVAILABILITIES TO TRAJECTORY.
-                
                 # Get the availability of the ego in the scene's frames.
                 availability = data_batch["target_availabilities"][scene_idx].cpu().numpy()
                 
@@ -133,8 +131,11 @@ class EgoModelPerception(nn.Module):
                 # Get the next lane's id.
                 next_lane_id = self.ego_route[scene_idx][1]
                 
+                # Check if the ego is in its next lane. 
+                in_next_lane = self.map_api.in_lane_bounds(position, next_lane_id)
+                
                 # The first lane of the route is not the current lane anymore, remove it.
-                if self.map_api.in_lane_bounds(position, next_lane_id):
+                if in_next_lane:
                     self.ego_route[scene_idx].popleft()
 
             if len(self.ego_route[scene_idx]) == 1:
@@ -200,8 +201,11 @@ class EgoModelPerception(nn.Module):
                     # Get the next lane's id.
                     next_lane_id = self.agents_route[scene_idx][agent_id][1]
                     
+                    # Check if the agent is in its next lane. 
+                    in_next_lane = self.map_api.in_lane_bounds(position, next_lane_id)
+                    
                     # The first lane of the route is not the current lane anymore, remove it.
-                    if self.map_api.in_lane_bounds(position, next_lane_id):
+                    if in_next_lane:
                         self.agents_route[scene_idx][agent_id].popleft()
 
     def update_ego_speed(self, data_batch: Dict[str, torch.Tensor]):
