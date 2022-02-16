@@ -24,39 +24,58 @@ class CustomMapAPI(MapAPI):
         self.lane_cfg_params = cfg["data_generation_params"]["lane_params"]
 
     def get_route(self, trajectory: np.ndarray) -> List[str]:
+        # Ensure the trajectory has a single position.
         if len(trajectory) == 0:
             return None
 
+        # Define the sets of visited and candidate lanes.
+        candidate_lanes_ids = {}
         visited_lanes_ids = {}
-        unvisited_lanes_ids = {}
         
+        # Get the lanes at the initial position of the trajectory.
         initial_position = trajectory[0]
-        final_position = trajectory[-1]
-        
         initial_lanes_ids = self.get_lanes_ids_at(initial_position)
+        
+        # Get the lanes at the last position of the trajectory.
+        final_position = trajectory[-1]
         final_lanes_ids = self.get_lanes_ids_at(final_position)
         
+        # Set the initial lanes as the candidate lanes, with "None" as their parent lane id, indicating that these 
+        # lanes do not have any parent lanes.
         for initial_lane_id in initial_lanes_ids:
-            unvisited_lanes_ids[initial_lane_id] = None
+            candidate_lanes_ids[initial_lane_id] = None
 
+        # Then, for each position of the trajectory:
         for position in trajectory:
-            # Get the lanes at this position.
+            # Get the candidate lanes at the current position.
             current_lanes_ids = []
-            for lane_id in unvisited_lanes_ids:
+            for lane_id in candidate_lanes_ids:
                 if self.in_lane(position, lane_id):
                     current_lanes_ids.append(lane_id)
-
+            
+            # Visit these candidate lanes and their (potentially thin, or skipped) parent.
             for lane_id in current_lanes_ids:
-                # Visit this lane.
-                visited_lanes_ids[lane_id] = unvisited_lanes_ids[lane_id]
-                del unvisited_lanes_ids[lane_id]
+                if lane_id in visited_lanes_ids: continue
+                visited_lanes_ids[lane_id] = candidate_lanes_ids[lane_id]
+                parent_lane_id = candidate_lanes_ids[lane_id]
+                if parent_lane_id is None or parent_lane_id in visited_lanes_ids: continue
+                visited_lanes_ids[parent_lane_id] = candidate_lanes_ids[parent_lane_id]
+
+            # If at least one new lane has been visited, reset the set of candidate lanes.
+            if len(current_lanes_ids) > 0:
+                candidate_lanes_ids = {}
                 
-                # Add all connected lanes (and their connected lanes) of the lane at this position to the set of 
-                # unvisited lanes, setting this lane as their parent.
-                for connected_lane_id in self.get_connected_lanes_ids(lane_id):
-                    unvisited_lanes_ids[connected_lane_id] = lane_id
+                # Then, add all connected lanes (depth of 2, in case of very thin or skipped lanes) of the newly 
+                # visisted lanes to the set of candidate lanes. 
+                for lane_id in current_lanes_ids:
+                    for connected_lane_id in self.get_connected_lanes_ids(lane_id):
+                        if connected_lane_id in candidate_lanes_ids: continue
+                        candidate_lanes_ids[connected_lane_id] = lane_id
+                        for secondary_connected_lane_id in self.get_connected_lanes_ids(connected_lane_id):
+                            if secondary_connected_lane_id in candidate_lanes_ids: continue
+                            candidate_lanes_ids[secondary_connected_lane_id] = connected_lane_id
         
-        # Backtrack the algorithm to obtain a feasible route.
+        # Backtrack the visited lanes, starting from the lanes at the final position, to obtain a feasible route.
         route = None
         for final_lane_id in final_lanes_ids:
             if final_lane_id not in visited_lanes_ids: continue

@@ -286,35 +286,23 @@ class EgoModelPerception(nn.Module):
 
             self.ego_leader[scene_idx] = None
 
-            for agent_idx, (agent_id, agent_route) in enumerate(self.agents_route[scene_idx].items()):
+            for _, (agent_id, agent_route) in enumerate(self.agents_route[scene_idx].items()):
                 # Ensure the agent has a route.
-                if agent_route == None:
-                    continue
+                if agent_route == None: continue
                 
                  # Ensure the ego and agent share one or more lanes in their route.
-                if set(self.ego_route[scene_idx]).isdisjoint(set(agent_route)):
-                    continue
-                
-                # Get the agent's yaw from the ego.
-                agent_local_yaw = data_batch["all_other_agents_history_yaws"][scene_idx][agent_idx][0].cpu().numpy()
-                
-                # The threshold under which the agent is considered to be facing a similar direction as the ego [rad].
-                similar_direction_threshold = 1.57
-                
-                # Ensure the agent is pointed in a similar direction.
-                if abs(agent_local_yaw) > similar_direction_threshold:
-                    continue
-                
+                if set(self.ego_route[scene_idx]).isdisjoint(set(agent_route)): continue
+
                 # Get the agent's current position.
                 agent_local_position = self.agents_local_position[scene_idx][agent_id]
 
-                # Ensure the agent is ahead of the ego.
-                if agent_local_position[0] > 0:
-                    continue
+                # Ensure the agent is in front the ego.
+                if agent_local_position[0] < 0: continue
                 
                 # Determine the agent's distance to the ego.
                 agent_distance = np.linalg.norm(agent_local_position)
                 
+                # Update the ego's leader.
                 if self.ego_leader[scene_idx] == None:
                     self.ego_leader[scene_idx] = agent_id
                     self.ego_leader_distance[scene_idx] = agent_distance

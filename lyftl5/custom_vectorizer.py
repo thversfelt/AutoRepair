@@ -4,7 +4,7 @@ import numpy as np
 
 from l5kit.data import filter_agents_by_distance, filter_agents_by_labels, filter_tl_faces_by_status
 from l5kit.data.filter import filter_agents_by_track_id, get_other_agents_ids
-from l5kit.data.map_api import InterpolationMethod, MapAPI
+from l5kit.data.map_api import InterpolationMethod, MapAPI, TLFacesColors
 from l5kit.geometry.transform import transform_points
 from l5kit.rasterization.semantic_rasterizer import indices_in_bounds
 from l5kit.sampling.agent_sampling import get_relative_poses
@@ -16,16 +16,29 @@ class CustomVectorizer(Vectorizer):
                        history_tl_faces: List[np.ndarray]) -> dict:
         """Override the default map vectorizer to return an empty dictionary, so it doesn't perform operations such
         as finding the ego's nearest lane each frame. So, the vectorizer will only vectorize the agents."""
-        return {}
+        
+        traffic_lights_ids = filter_tl_faces_by_status(history_tl_faces[0], "ACTIVE")["face_id"]
+        traffic_lights_colors = np.zeros(len(traffic_lights_ids))
+        
+        for i, traffic_light_id in enumerate(traffic_lights_ids):
+            traffic_light_color = TLFacesColors[self.mapAPI.get_color_for_face(traffic_light_id)]
+            traffic_lights_colors[i] = traffic_light_color
+
+        return {
+            "traffic_lights_ids": traffic_lights_ids,  # TODO: CANT HAVE STRINGS AS KEYS OR VALUES IN GPU
+            "traffic_lights_colors": traffic_lights_colors
+        }
 
     def _vectorize_agents(self, selected_track_id: Optional[int], agent_centroid_m: np.ndarray,
                           agent_yaw_rad: float, agent_from_world: np.ndarray, history_frames: np.ndarray,
                           history_agents: List[np.ndarray], history_position_m: np.ndarray,
                           history_yaws_rad: np.ndarray, history_availability: np.ndarray, future_frames: np.ndarray,
                           future_agents: List[np.ndarray]) -> dict:
+        
         agent_features = super()._vectorize_agents(selected_track_id, agent_centroid_m, agent_yaw_rad, agent_from_world,
                                                 history_frames, history_agents, history_position_m, history_yaws_rad,
                                                 history_availability, future_frames, future_agents)        
+        
         history_agents_flat = filter_agents_by_labels(np.concatenate(history_agents))
         history_agents_flat = filter_agents_by_distance(history_agents_flat, agent_centroid_m, self.max_agents_distance)
 

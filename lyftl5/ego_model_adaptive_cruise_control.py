@@ -3,11 +3,8 @@ from l5kit.geometry.transform import transform_point
 import numpy as np
 import torch
 from torch import nn
-from lyftl5.custom_map_api import CustomMapAPI
-from l5kit.data.labels import PERCEPTION_LABELS
 from lyftl5.ego_model_perception import EgoModelPerception
 
-PERCEPTION_LABEL_CAR = 3
 
 class EgoModelAdaptiveCruiseControl(nn.Module):
     def __init__(self, perception: EgoModelPerception):
