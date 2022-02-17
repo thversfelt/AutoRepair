@@ -1,5 +1,5 @@
-astor==0.8.1
-bokeh==2.4.1
+--find-links https://download.pytorch.org/whl/cu102/torch_stable.html
+torch==1.10.2+cu102
+torchvision==0.11.3+cu102
+torchaudio===0.10.2+cu102
 l5kit==1.5.0
-numpy==1.19.5
-torch==1.10.2

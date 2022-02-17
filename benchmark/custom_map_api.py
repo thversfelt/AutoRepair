@@ -10,8 +10,6 @@ from l5kit.rasterization.semantic_rasterizer import indices_in_bounds
 from queue import PriorityQueue
 from collections import deque
 
-from sqlalchemy import false
-
 
 class CustomMapAPI(MapAPI):
     def __init__(self, cfg: dict, dm: DataManager):
