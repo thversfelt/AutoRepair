@@ -5,7 +5,7 @@
             "name": "Example",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/lyftl5/example.py",
+            "program": "${workspaceFolder}/benchmark/example.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceRoot}",
             "env": {
