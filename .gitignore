@@ -214,8 +214,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Visual Studio Code
-.vscode/
+# Pretrained models
+benchmark/pretrained/
 
-# Lyft Level 5 dataset
-lyftl5/tmp/
+# HTML files
+*.html
