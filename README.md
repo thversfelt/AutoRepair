@@ -6,7 +6,7 @@ To setup the development evironment for AutoRepair, follow the following steps.
 
 ## Tools:
 
-For both **Windows** and **McOS**, you will need the following tools:
+For both **Windows** and **MacOS**, you will need the following tools:
 
 - [Visual Studio Code](https://code.visualstudio.com/download) is the recommended editor for developing, running and debugging AutoRepair. So, make sure to have an up-to-date version of Visual Studio Code.
 

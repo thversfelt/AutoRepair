@@ -24,14 +24,14 @@ if __name__ == '__main__':
     print("device: " + str(device))
     torch.set_grad_enabled(False)
 
-    # Initialize the ego dataset.
-    ego_cfg = load_config_data("benchmark/ego_config.yaml")
-    eval_ego_cfg = ego_cfg["val_data_loader"]
-    eval_ego_zarr = ChunkedDataset(dm.require(eval_ego_cfg["key"])).open()
-    map_api = CustomMapAPI(ego_cfg, dm)
-    vectorizer = CustomVectorizer(ego_cfg, map_api)
-    ego_dataset = EgoDatasetVectorized(ego_cfg, eval_ego_zarr, vectorizer)
-    print(ego_dataset)
+    # Initialize the dataset.
+    config = load_config_data("benchmark/config.yaml")
+    dataset_path = config["val_data_loader"]["key"]
+    dataset = ChunkedDataset(dm.require(dataset_path)).open()
+    map_api = CustomMapAPI(config, dm)
+    vectorizer = CustomVectorizer(config, map_api)
+    vectorized_dataset = EgoDatasetVectorized(config, dataset, vectorizer)
+    print(vectorized_dataset)
     
     # Load the ego model.
     ego_model = EgoModel(map_api).to(device)
@@ -39,22 +39,21 @@ if __name__ == '__main__':
 
     # Setup the simulation.
     num_scenes_to_unroll = 3
-    num_simulation_steps = ego_cfg["model_params"]["future_num_frames"]  # Only simulate for the number of future frames.
+    num_simulation_steps = config["model_params"]["future_num_frames"]  # Only simulate for the number of future frames.
     #scenes_to_unroll = random.sample(range(0, len(eval_ego_zarr.scenes)), num_scenes_to_unroll)
     scenes_to_unroll = [96, 88, 84]  # Scene 96 has a red -> green traffic light transition.
     print(scenes_to_unroll)
 
-    sim_cfg = SimulationConfig(use_ego_gt=False, use_agents_gt=True, disable_new_agents=True,
+    sim_config = SimulationConfig(use_ego_gt=False, use_agents_gt=True, disable_new_agents=True,
                                distance_th_far=500, distance_th_close=50, num_simulation_steps=num_simulation_steps,
                                start_frame_index=0, show_info=True)
 
-    sim_loop = ClosedLoopSimulator(sim_cfg, ego_dataset, device, model_ego=ego_model, model_agents=None)
+    sim_loop = ClosedLoopSimulator(sim_config, vectorized_dataset, device, model_ego=ego_model, model_agents=None)
 
     # Unroll.
     sim_outs = sim_loop.unroll(scenes_to_unroll)
 
     # Visualize.
-    semantic_map = MapAPI.from_cfg(dm, ego_cfg)
     for sim_out in sim_outs:  # for each scene
-        vis_in = simulation_out_to_visualizer_scene(sim_out, semantic_map)
+        vis_in = simulation_out_to_visualizer_scene(sim_out, map_api)
         show(visualize(sim_out.scene_id, vis_in))

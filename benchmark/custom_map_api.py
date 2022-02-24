@@ -1,13 +1,9 @@
-import enum
 from typing import List
 import numpy as np
-import math
 from l5kit.configs.config import load_metadata
 from l5kit.data import MapAPI, DataManager
-from l5kit.data.map_api import InterpolationMethod
+from l5kit.data.map_api import InterpolationMethod, ENCODING
 from l5kit.data.proto.road_network_pb2 import Lane, MapElement
-from l5kit.rasterization.semantic_rasterizer import indices_in_bounds
-from queue import PriorityQueue
 from collections import deque
 
 
@@ -18,8 +14,6 @@ class CustomMapAPI(MapAPI):
         world_to_ecef = np.array(dataset_meta["world_to_ecef"], dtype=np.float64)
         protobuf_map_path = dm.require(cfg["raster_params"]["semantic_map_key"])
         super().__init__(protobuf_map_path, world_to_ecef)
-
-        self.lane_cfg_params = cfg["data_generation_params"]["lane_params"]
 
     def get_route(self, trajectory: np.ndarray) -> List[str]:
         # Ensure the trajectory has a single position.
@@ -239,3 +233,11 @@ class CustomMapAPI(MapAPI):
         
         in_bounds = x_in and y_in
         return in_bounds
+    
+    def id_as_int(self, id: str) -> np.ndarray:
+        id_bytes = id.encode(ENCODING)
+        return np.frombuffer(id_bytes, dtype=np.int32)
+
+    def int_as_id(self, id: np.ndarray) -> str:
+        id_bytes = np.frombuffer(id, dtype=np.int8).tobytes()
+        return id_bytes.decode(ENCODING)

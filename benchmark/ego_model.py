@@ -21,6 +21,8 @@ class EgoModel(nn.Module):
 
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         self.perception.forward(data_batch)
+        
         self.navigation.forward(data_batch)
         self.adaptive_cruise_control.forward(data_batch)
+        #self.traffic_lights.forward(data_batch)
         return self.control.forward(data_batch)
