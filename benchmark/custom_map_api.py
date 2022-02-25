@@ -234,10 +234,10 @@ class CustomMapAPI(MapAPI):
         in_bounds = x_in and y_in
         return in_bounds
     
-    def id_as_int(self, id: str) -> np.ndarray:
+    def id_as_int(self, id: str) -> np.int32:
         id_bytes = id.encode(ENCODING)
         return np.frombuffer(id_bytes, dtype=np.int32)
 
-    def int_as_id(self, id: np.ndarray) -> str:
+    def int_as_id(self, id: np.int32) -> str:
         id_bytes = np.frombuffer(id, dtype=np.int8).tobytes()
         return id_bytes.decode(ENCODING)

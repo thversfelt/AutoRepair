@@ -23,6 +23,7 @@ class EgoModel(nn.Module):
         self.perception.forward(data_batch)
         
         self.navigation.forward(data_batch)
-        self.adaptive_cruise_control.forward(data_batch)
-        #self.traffic_lights.forward(data_batch)
+        #self.adaptive_cruise_control.forward(data_batch)
+        self.traffic_lights.forward(data_batch)
+        
         return self.control.forward(data_batch)

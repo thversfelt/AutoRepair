@@ -26,25 +26,27 @@ class CustomVectorizer(Vectorizer):
         self.max_agents_distance = cfg["data_generation_params"]["max_agents_distance"]
         self.other_agents_num = cfg["data_generation_params"]["other_agents_num"]
         
-        self.traffic_lights_num = cfg["data_generation_params"]["traffic_lights_num"]
+        self.traffic_light_faces_num = cfg["data_generation_params"]["traffic_light_faces_num"]
     
     def _vectorize_map(self, agent_centroid_m: np.ndarray, agent_from_world: np.ndarray,
                        history_tl_faces: List[np.ndarray]) -> dict:
-        """Override the default map vectorizer to return an empty dictionary, so it doesn't perform operations such
-        as finding the ego's nearest lane each frame. So, the vectorizer will only vectorize the agents."""
         
-        active_traffic_lights_ids = filter_tl_faces_by_status(history_tl_faces[0], "ACTIVE")["face_id"]
+        # Filter the list of traffic light faces for active traffic light faces.
+        active_traffic_light_faces_ids = filter_tl_faces_by_status(history_tl_faces[0], "ACTIVE")["face_id"]
         
-        #traffic_lights_ids = np.zeros(len(active_traffic_lights_ids), dtype=np.int32)
-        traffic_lights_colors = np.zeros(self.traffic_lights_num)
+        # Remove duplicate id's.
+        active_traffic_light_faces_ids = list(set(active_traffic_light_faces_ids))
+
+        traffic_light_faces_ids = np.zeros(self.traffic_light_faces_num, dtype=np.int32)
+        traffic_light_faces_colors = np.zeros(self.traffic_light_faces_num, dtype=np.int8)
         
-        for i, active_traffic_light_id in enumerate(active_traffic_lights_ids):
-            #traffic_lights_ids[i] = self.mapAPI.id_as_int(active_traffic_light_id)
-            traffic_lights_colors[i] = TLFacesColors[self.mapAPI.get_color_for_face(active_traffic_light_id)]
+        for i, active_traffic_light_face_id in enumerate(active_traffic_light_faces_ids):
+            traffic_light_faces_ids[i] = self.mapAPI.id_as_int(active_traffic_light_face_id)
+            traffic_light_faces_colors[i] = TLFacesColors[self.mapAPI.get_color_for_face(active_traffic_light_face_id)]
 
         return {
-            #"traffic_lights_ids": traffic_lights_ids,
-            #"traffic_lights_colors": traffic_lights_colors
+            "traffic_light_faces_ids": traffic_light_faces_ids,
+            "traffic_light_faces_colors": traffic_light_faces_colors
         }
         
     def _vectorize_agents(self, selected_track_id: Optional[int], agent_centroid_m: np.ndarray,

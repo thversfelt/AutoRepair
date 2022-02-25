@@ -16,8 +16,8 @@ class EgoModelTrafficLights(nn.Module):
       
         acc = torch.zeros([num_of_scenes], dtype=torch.float64)
         for scene_idx in range(num_of_scenes):
-            #traffic_lights_ids = data_batch["traffic_lights_ids"].cpu().numpy()
-            #traffic_lights_colors = data_batch["traffic_lights_colors"].cpu().numpy()
+            traffic_light_faces_ids = data_batch["traffic_light_faces_ids"].cpu().numpy()
+            traffic_light_faces_colors = data_batch["traffic_light_faces_colors"].cpu().numpy()
             
             for lane_id in self.perception.ego_route[scene_idx]:
                 traffic_control_ids = self.perception.map_api.get_lane_traffic_control_ids(lane_id)

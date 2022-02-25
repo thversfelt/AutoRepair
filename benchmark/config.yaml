@@ -34,4 +34,4 @@ data_generation_params:
   # maximum distance from AoI for another agent to be picked
   max_agents_distance: 35
 
-  traffic_lights_num: 20
+  traffic_light_faces_num: 20

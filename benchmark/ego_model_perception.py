@@ -26,6 +26,8 @@ class EgoModelPerception(nn.Module):
         self.agents_position = {}
         self.agents_route = {}  # For each scene id, dictionary of agent id's with their corresponding routes (lists of lane id's).
         self.agents_speed = {}
+        
+        self.traffic_lights = {} # traffic_lights[scene_id][lane_id] = GREEN, YELLOW, or RED
 
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         self.update_ego_position(data_batch)
