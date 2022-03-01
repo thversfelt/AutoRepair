@@ -16,16 +16,14 @@ class EgoModelTrafficLights(nn.Module):
       
         acc = torch.zeros([num_of_scenes], dtype=torch.float64)
         for scene_idx in range(num_of_scenes):
-            traffic_light_faces_ids = data_batch["traffic_light_faces_ids"].cpu().numpy()
-            traffic_light_faces_colors = data_batch["traffic_light_faces_colors"].cpu().numpy()
-            
-            for lane_id in self.perception.ego_route[scene_idx]:
-                traffic_control_ids = self.perception.map_api.get_lane_traffic_control_ids(lane_id)
-                for traffic_control_id in traffic_control_ids:
-                    break
-                    
-            
-            acc[scene_idx] = 1.0
+            current_lane_id = self.perception.ego_route[scene_idx][0]
+            has_active_traffic_light = current_lane_id in self.perception.traffic_lights[scene_idx]
+            # Get the ego's absolute speed.
+            ego_speed = self.perception.ego_speed[scene_idx]
+            if has_active_traffic_light and self.perception.traffic_lights[scene_idx][current_lane_id] == 0 and ego_speed >= 0.0:
+                acc[scene_idx] = -1.0
+            else:
+                acc[scene_idx] = 1.0
 
         data_batch["acc"] = acc
         return data_batch

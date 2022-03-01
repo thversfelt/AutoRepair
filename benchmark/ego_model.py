@@ -22,6 +22,8 @@ class EgoModel(nn.Module):
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         self.perception.forward(data_batch)
         
+        # TODO: MUST abstract scene into classes, and modules into Object-Oriented classes. Because right now, it is not
+        # possible to "enable" one module for one scene, and another module for another scene.
         self.navigation.forward(data_batch)
         #self.adaptive_cruise_control.forward(data_batch)
         self.traffic_lights.forward(data_batch)
