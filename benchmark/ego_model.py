@@ -8,6 +8,7 @@ from benchmark.ego_model_adaptive_cruise_control import EgoModelAdaptiveCruiseCo
 from benchmark.ego_model_control import EgoModelControl
 from benchmark.ego_model_navigation import EgoModelNavigation
 from benchmark.ego_model_perception import EgoModelPerception
+from benchmark.ego_model_planning import EgoModelPlanning
 from benchmark.ego_model_traffic_lights import EgoModelTrafficLights
 
 
@@ -15,6 +16,9 @@ class EgoModel(nn.Module):
     def __init__(self, map: CustomMapAPI):
         super().__init__()
         self.perception = EgoModelPerception(map)
+        self.navigation = EgoModelNavigation()
+        self.planning = EgoModelPlanning()
+        self.control = EgoModelControl()
 
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         self.perception.process(data_batch)
@@ -25,13 +29,10 @@ class EgoModel(nn.Module):
         yaws = np.zeros([num_of_scenes, 1])
     
         for _, scene in self.perception.scenes.items():
-            control = EgoModelControl()
-            navigation = EgoModelNavigation()
+            steer = self.navigation.process(scene)
+            acc = self.planning.process(scene)
             
-            steer = navigation.process(scene)
-            acc = 1.0
-            
-            position, yaw = control.process(scene.ego, steer, acc)
+            position, yaw = self.control.process(scene.ego, steer, acc)
             positions[scene.index] = position
             yaws[scene.index] = yaw
 

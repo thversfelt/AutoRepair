@@ -13,7 +13,7 @@ from benchmark.ego_model_perception import EgoModelPerception
 from benchmark.scene import Scene
 
 
-class EgoModelNavigation(nn.Module):
+class EgoModelNavigation():
 
     def process(self, scene: Scene):
         steer = 0.0
