@@ -5,42 +5,34 @@ from l5kit.geometry.transform import transform_point, transform_points
 import numpy as np
 import torch
 import torch.nn as nn
+from benchmark.agent import EgoAgent
 from benchmark.custom_map_api import CustomMapAPI
 import random
 
 from benchmark.ego_model_perception import EgoModelPerception
+from benchmark.scene import Scene
 
 
 class EgoModelNavigation(nn.Module):
-    def __init__(self, perception: EgoModelPerception):
-        super().__init__()
-        self.perception = perception
 
-    def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        num_of_scenes = len(data_batch['scene_index'])
-        
-        steer = torch.zeros([num_of_scenes], dtype=torch.float64)
-        for scene_idx in range(num_of_scenes):
-            ego_position = data_batch["centroid"][scene_idx].cpu().numpy()
-            ego_from_world = data_batch["agent_from_world"][scene_idx].cpu().numpy()
+    def process(self, scene: Scene):
+        steer = 0.0
+        closest_midpoint = None
             
-            closest_midpoint = None
+        for lane_id in scene.ego.route:
+            # Get the closest lane midpoints for the ego's current lane.
+            lane_closest_midpoints = scene.map.get_closest_lane_midpoints(scene.ego.position, lane_id)
+            lane_closest_midpoints = transform_points(lane_closest_midpoints, scene.ego_from_world)
+            lane_closest_midpoints = lane_closest_midpoints[lane_closest_midpoints[:,0] > 0]
             
-            for lane_id in self.perception.ego_route[scene_idx]:
-                # Get the closest lane midpoints for the ego's current lane.
-                lane_closest_midpoints = self.perception.map_api.get_closest_lane_midpoints(ego_position, lane_id)
-                lane_closest_midpoints = transform_points(lane_closest_midpoints, ego_from_world)
-                lane_closest_midpoints = lane_closest_midpoints[lane_closest_midpoints[:,0] > 0]
-                
-                if len(lane_closest_midpoints) == 0:
-                    continue
-                else:
-                    closest_midpoint = lane_closest_midpoints[0]
-                    break
+            if len(lane_closest_midpoints) == 0:
+                continue
+            else:
+                closest_midpoint = lane_closest_midpoints[0]
+                break
 
-            if closest_midpoint is not None:
-                # Steer input is proportional to the y-coordinate of the closest midpoint.
-                steer[scene_idx] = 0.5 * closest_midpoint[1]
+        if closest_midpoint is not None:
+            # Steer input is proportional to the y-coordinate of the closest midpoint.
+            steer = 0.5 * closest_midpoint[1]
         
-        data_batch["steer"] = steer
-        return data_batch
+        return steer

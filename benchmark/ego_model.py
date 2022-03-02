@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from typing import Dict
@@ -11,21 +12,33 @@ from benchmark.ego_model_traffic_lights import EgoModelTrafficLights
 
 
 class EgoModel(nn.Module):
-    def __init__(self, map_api: CustomMapAPI):
+    def __init__(self, map: CustomMapAPI):
         super().__init__()
-        self.perception = EgoModelPerception(map_api)
-        self.control = EgoModelControl(self.perception)
-        self.navigation = EgoModelNavigation(self.perception)
-        self.adaptive_cruise_control = EgoModelAdaptiveCruiseControl(self.perception)
-        self.traffic_lights = EgoModelTrafficLights(self.perception)
+        self.perception = EgoModelPerception(map)
 
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        self.perception.forward(data_batch)
+        self.perception.process(data_batch)
+        num_of_scenes = len(self.perception.scenes)
         
-        # TODO: MUST abstract scene into classes, and modules into Object-Oriented classes. Because right now, it is not
-        # possible to "enable" one module for one scene, and another module for another scene.
-        self.navigation.forward(data_batch)
-        #self.adaptive_cruise_control.forward(data_batch)
-        self.traffic_lights.forward(data_batch)
+        # The x,y positions and yaws of the ego agent's reference system in each scene.
+        positions = np.zeros([num_of_scenes, 2])
+        yaws = np.zeros([num_of_scenes, 1])
+    
+        for _, scene in self.perception.scenes.items():
+            control = EgoModelControl()
+            navigation = EgoModelNavigation()
+            
+            steer = navigation.process(scene)
+            acc = 1.0
+            
+            position, yaw = control.process(scene.ego, steer, acc)
+            positions[scene.index] = position
+            yaws[scene.index] = yaw
+
+        positions = torch.from_numpy(positions)
+        yaws = torch.from_numpy(yaws)
         
-        return self.control.forward(data_batch)
+        return {
+            "positions": torch.reshape(positions, [num_of_scenes, 1, 2]),
+            "yaws": torch.reshape(yaws, [num_of_scenes, 1, 1])
+        }
