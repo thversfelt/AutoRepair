@@ -38,15 +38,12 @@ class CustomVectorizer(Vectorizer):
         active_traffic_light_faces_ids = list(set(active_traffic_light_faces_ids))
 
         traffic_light_faces_ids = np.zeros(self.traffic_light_faces_num, dtype=np.int32)
-        traffic_light_faces_colors = np.zeros(self.traffic_light_faces_num, dtype=np.int8)
         
         for i, active_traffic_light_face_id in enumerate(active_traffic_light_faces_ids):
             traffic_light_faces_ids[i] = self.mapAPI.id_as_int(active_traffic_light_face_id)
-            traffic_light_faces_colors[i] = TLFacesColors[self.mapAPI.get_color_for_face(active_traffic_light_face_id)]
 
         return {
-            "traffic_light_faces_ids": traffic_light_faces_ids,
-            "traffic_light_faces_colors": traffic_light_faces_colors
+            "traffic_light_faces_ids": traffic_light_faces_ids
         }
         
     def _vectorize_agents(self, selected_track_id: Optional[int], agent_centroid_m: np.ndarray,

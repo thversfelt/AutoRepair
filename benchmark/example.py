@@ -40,7 +40,7 @@ if __name__ == '__main__':
     # Setup the simulation.
     num_scenes_to_unroll = 3
     num_simulation_steps = config["model_params"]["future_num_frames"]  # Only simulate for the number of future frames.
-    #scenes_to_unroll = random.sample(range(0, len(eval_ego_zarr.scenes)), num_scenes_to_unroll)
+    scenes_to_unroll = random.sample(range(0, len(dataset.scenes)), num_scenes_to_unroll)
     scenes_to_unroll = [96]  # Scene 96 has a red -> green traffic light transition.
     print(scenes_to_unroll)
 
@@ -51,7 +51,10 @@ if __name__ == '__main__':
     sim_loop = ClosedLoopSimulator(sim_config, vectorized_dataset, device, model_ego=ego_model, model_agents=None)
 
     # Unroll.
-    sim_outs = sim_loop.unroll(scenes_to_unroll)
+    sim_outs = []
+    for scene_index in scenes_to_unroll:
+        sim_out = sim_loop.unroll([scene_index])
+        sim_outs += sim_out
 
     # Visualize.
     for sim_out in sim_outs:  # for each scene
