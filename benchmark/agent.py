@@ -121,6 +121,7 @@ class EgoAgent(Agent):
         super().__init__(map, scene_index)
         self.length: float = None
         self.leader: VehicleAgent = None
+        self.traffic_light = None
 
     def update(self, data_batch: Dict[str, torch.Tensor], agents: Dict[int, VehicleAgent]):
         self.update_position(data_batch)
@@ -128,9 +129,15 @@ class EgoAgent(Agent):
         self.update_length(data_batch)
         self.update_route(data_batch)
         self.update_leader(agents)
+        self.update_traffic_light(data_batch)
         
     def update_position(self, data_batch: Dict[str, torch.Tensor]):
-        self.position = data_batch["centroid"][self.scene_index].cpu().numpy()
+        # Get the ego reference system to world reference system transformation matrix.
+        world_from_ego = data_batch["world_from_agent"][self.scene_index].cpu().numpy()
+        
+        local_position = np.zeros(2)
+
+        self.position = transform_point(local_position, world_from_ego)
     
     def update_velocity(self, data_batch: Dict[str, torch.Tensor]):   
         # Get the availability of the ego in the scene's frames.
@@ -244,3 +251,19 @@ class EgoAgent(Agent):
             if agent_distance_to_ego < leader_distance_to_ego:
                 self.leader = agent
     
+    def update_traffic_light(self, data_batch: Dict[str, torch.Tensor]):
+        self.traffic_light = None
+        
+        # Decode the list of active traffic light faces id's in this scene.
+        traffic_light_faces_ids = data_batch["traffic_light_faces_ids"][self.scene_index].cpu().numpy()
+        traffic_light_faces_ids = [self.map.int_as_id(face_id) for face_id in traffic_light_faces_ids]
+        
+        traffic_light_to_color: Dict[str, str] = {}
+        for face_id in traffic_light_faces_ids:
+            try:
+                traffic_light_to_color[face_id] = self.map.get_color_for_face(face_id).lower()
+            except KeyError:
+                continue  # this happens only on KIRBY, 2 TLs have no match in the map
+        
+        current_lane_id = self.route[0]
+        self.traffic_light = self.map.get_tl_feature_for_lane(current_lane_id, traffic_light_to_color)

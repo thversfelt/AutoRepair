@@ -2,7 +2,6 @@ from typing import Dict
 import torch
 from benchmark.agent import Agent, EgoAgent, VehicleAgent
 from benchmark.custom_map_api import CustomMapAPI
-from benchmark.lane import Lane
 
 
 class Scene:
@@ -42,7 +41,7 @@ class Scene:
             
             agent = self.agents[agent_id]
             agent.update(data_batch, agent_index)
-            
+    
     def update_transformation_matrices(self, data_batch: Dict[str, torch.Tensor]):
         # Update transformation matrices.
         self.world_from_ego = data_batch["world_from_agent"][self.index].cpu().numpy()
