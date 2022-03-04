@@ -9,6 +9,7 @@ class EgoModelPlanning():
         self.traffic_lights = EgoModelTrafficLights()
 
     def process(self, scene: Scene) -> float:
+        
         if scene.ego.traffic_light == self.traffic_lights.RED:
             return self.traffic_lights.process(scene)
         else:

@@ -21,14 +21,14 @@ class EgoModelControl:
         acc = np.clip(acc, self.min_acc, self.max_acc)
         
         timestep = 0.1
-        ego.speed += acc * timestep
+        speed = ego.speed + acc * timestep
         beta = np.arctan(0.5 * np.tan(steer))
-        velocity = ego.speed * np.array([
+        velocity = speed * np.array([
             np.cos(beta),
             np.sin(beta)
         ])
 
-        position = velocity * timestep
-        yaw = ego.speed * np.sin(beta) / (0.5 * ego.length) * timestep
+        position = velocity * timestep # In the agent's local space.
+        yaw = speed * np.sin(beta) / (0.5 * ego.length) * timestep # The difference in absolute yaw.
 
         return position, yaw
