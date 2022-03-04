@@ -31,8 +31,8 @@ class EgoModel(nn.Module):
         for _, scene in self.perception.scenes.items():
             steer = self.navigation.process(scene)
             acc = self.planning.process(scene)
-            
             position, yaw = self.control.process(scene.ego, steer, acc)
+            
             positions[scene.index] = position
             yaws[scene.index] = yaw
 

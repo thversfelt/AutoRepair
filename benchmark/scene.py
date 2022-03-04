@@ -12,13 +12,10 @@ class Scene:
         self.map: CustomMapAPI = map
         self.ego: EgoAgent = None
         self.agents: Dict[int, VehicleAgent] = {}
-        self.world_from_ego = None
-        self.ego_from_world = None
 
     def update(self, data_batch: Dict[str, torch.Tensor]):
         self.update_agents(data_batch)
         self.update_ego(data_batch)
-        self.update_transformation_matrices(data_batch)
     
     def update_ego(self, data_batch: Dict[str, torch.Tensor]):
         # Update the ego.
@@ -41,9 +38,4 @@ class Scene:
             
             agent = self.agents[agent_id]
             agent.update(data_batch, agent_index)
-    
-    def update_transformation_matrices(self, data_batch: Dict[str, torch.Tensor]):
-        # Update transformation matrices.
-        self.world_from_ego = data_batch["world_from_agent"][self.index].cpu().numpy()
-        self.ego_from_world = data_batch["agent_from_world"][self.index].cpu().numpy()
         

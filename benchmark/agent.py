@@ -19,8 +19,9 @@ class VehicleAgent(Agent):
     
     def __init__(self, map: CustomMapAPI, scene_index: int, id: int):
         super().__init__(map, scene_index)
-        self.id = id
-        self.parked = False
+        self.id: int = id
+        self.parked: bool = False
+        self.local_position: np.array = None
 
     def update(self, data_batch: Dict[str, torch.Tensor], index: int):
         self.index = index
@@ -122,47 +123,47 @@ class EgoAgent(Agent):
         self.length: float = None
         self.leader: VehicleAgent = None
         self.traffic_light = None
+        self.world_from_ego = None
+        self.ego_from_world = None
 
     def update(self, data_batch: Dict[str, torch.Tensor], agents: Dict[int, VehicleAgent]):
+        self.update_transformation_matrices(data_batch)
         self.update_position(data_batch)
         self.update_velocity(data_batch)
         self.update_length(data_batch)
         self.update_route(data_batch)
         self.update_leader(agents)
         self.update_traffic_light(data_batch)
-        
+    
+    def update_transformation_matrices(self, data_batch: Dict[str, torch.Tensor]):
+        self.world_from_ego = data_batch["world_from_agent"][self.scene_index].cpu().numpy()
+        self.ego_from_world = data_batch["agent_from_world"][self.scene_index].cpu().numpy()
+    
     def update_position(self, data_batch: Dict[str, torch.Tensor]):
-        # Get the ego reference system to world reference system transformation matrix.
-        world_from_ego = data_batch["world_from_agent"][self.scene_index].cpu().numpy()
-        
         local_position = np.zeros(2)
-
-        self.position = transform_point(local_position, world_from_ego)
+        self.position = transform_point(local_position, self.world_from_ego)
     
     def update_velocity(self, data_batch: Dict[str, torch.Tensor]):   
         # Get the availability of the ego in the scene's frames.
         availability = data_batch["history_availabilities"][self.scene_index].cpu().numpy()
         
-        # Ensure the agent's historical positions are known (are available).
+        # Ensure the ego's historical positions are known (are available).
         if not all(availability):
             self.velocity = None
             self.speed = data_batch['speed'][self.scene_index].cpu().numpy()
             return
-
-        # Get the ego reference system to world reference system transformation matrix.
-        world_from_ego = data_batch["world_from_agent"][self.scene_index].cpu().numpy()
         
-        # Get the previous position of the agent in the scene.
+        # Get the previous position of the ego in the scene.
         previous_local_position = data_batch["history_positions"][self.scene_index][1].cpu().numpy()
         
         # Transform the position to the world reference system.
-        previous_position = transform_point(previous_local_position, world_from_ego)
+        previous_position = transform_point(previous_local_position, self.world_from_ego)
         
-        # Calculate the agent's velocity.
+        # Calculate the ego's velocity.
         timestep = 0.1
         self.velocity = (self.position - previous_position) / timestep
         
-        # Calculate the agent's speed.
+        # Calculate the ego's speed.
         self.speed = np.linalg.norm(self.velocity)
     
     def update_length(self, data_batch: Dict[str, torch.Tensor]):
@@ -175,9 +176,6 @@ class EgoAgent(Agent):
             self.adjust_route()
     
     def determine_route(self, data_batch: Dict[str, torch.Tensor]):
-        # Get the ego reference system to world reference system transformation matrix.
-        world_from_ego = data_batch["world_from_agent"][self.scene_index].cpu().numpy()
-        
         # Get the availability of the ego in the scene's frames.
         availability = data_batch["target_availabilities"][self.scene_index].cpu().numpy()
         
@@ -188,7 +186,7 @@ class EgoAgent(Agent):
         trajectory = trajectory[availability]
         
         # Transform the trajectory to the world reference system.
-        trajectory = transform_points(trajectory, world_from_ego)
+        trajectory = transform_points(trajectory, self.world_from_ego)
         
         # Get the route that matches the trajectory.
         self.route = self.map.get_route(trajectory)

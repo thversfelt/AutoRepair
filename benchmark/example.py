@@ -41,7 +41,7 @@ if __name__ == '__main__':
     num_scenes_to_unroll = 3
     num_simulation_steps = config["model_params"]["future_num_frames"]  # Only simulate for the number of future frames.
     scenes_to_unroll = random.sample(range(0, len(dataset.scenes)), num_scenes_to_unroll)
-    scenes_to_unroll = [96]  # Scene 96 has a red -> green traffic light transition.
+    scenes_to_unroll = [71]  # Scene 96 has a red -> green traffic light transition.
     print(scenes_to_unroll)
 
     sim_config = SimulationConfig(use_ego_gt=False, use_agents_gt=True, disable_new_agents=True,
