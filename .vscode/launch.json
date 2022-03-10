@@ -5,7 +5,7 @@
             "name": "Example",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/benchmark/example.py",
+            "program": "${workspaceFolder}/autotest/example.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceRoot}",
             "env": {

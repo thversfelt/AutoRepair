@@ -1,14 +1,11 @@
-import random
-from l5kit.geometry.transform import transform_point, transform_points
-import numpy as np
 import torch
-import torch.nn as nn
-from typing import Dict, List
-from benchmark.custom_map_api import CustomMapAPI
-from benchmark.scene import Scene
+
+from typing import Dict
+from autotest.model.context.scene import Scene
+from autotest.util.map_api import CustomMapAPI
 
 
-class EgoModelPerception():
+class Perception():
     def __init__(self, map: CustomMapAPI):
         self.map = map
         self.scenes: Dict[Scene] = {}

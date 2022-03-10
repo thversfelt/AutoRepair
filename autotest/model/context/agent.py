@@ -1,9 +1,11 @@
 import random
-from typing import Deque, Dict
 import numpy as np
 import torch
+
+from typing import Deque, Dict
 from l5kit.geometry.transform import transform_point, transform_points
-from benchmark.custom_map_api import CustomMapAPI
+from autotest.util.map_api import CustomMapAPI
+
 
 class Agent:
     
@@ -14,6 +16,7 @@ class Agent:
         self.velocity: np.array = None
         self.speed: float = None
         self.route: Deque[str] = None
+
 
 class VehicleAgent(Agent):
     

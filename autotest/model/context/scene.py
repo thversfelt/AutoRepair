@@ -1,7 +1,8 @@
-from typing import Dict
 import torch
-from benchmark.agent import Agent, EgoAgent, VehicleAgent
-from benchmark.custom_map_api import CustomMapAPI
+
+from typing import Dict
+from autotest.model.context.agent import EgoAgent, VehicleAgent
+from autotest.util.map_api import CustomMapAPI
 
 
 class Scene:

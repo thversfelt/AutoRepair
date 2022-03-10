@@ -1,22 +1,10 @@
-from collections import deque
-from os import close
-from typing import Dict
-from l5kit.geometry.transform import transform_point, transform_points
-import numpy as np
-import torch
-import torch.nn as nn
-from benchmark.agent import EgoAgent
-from benchmark.custom_map_api import CustomMapAPI
-import random
-
-from benchmark.ego_model_perception import EgoModelPerception
-from benchmark.scene import Scene
+from l5kit.geometry.transform import transform_points
+from autotest.model.context.scene import Scene
 
 
-class EgoModelNavigation():
+class Navigation():
 
-    def process(self, scene: Scene):
-        steer = 0.0
+    def process(self, scene: Scene) -> float:
         closest_midpoint = None
             
         for lane_id in scene.ego.route:
@@ -34,5 +22,7 @@ class EgoModelNavigation():
         if closest_midpoint is not None:
             # Steer input is proportional to the y-coordinate of the closest midpoint.
             steer = 0.5 * closest_midpoint[1]
+        else:
+            steer = 0.0
         
         return steer

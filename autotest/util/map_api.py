@@ -1,5 +1,6 @@
-from typing import List
 import numpy as np
+
+from typing import List
 from l5kit.configs.config import load_metadata
 from l5kit.data import MapAPI, DataManager
 from l5kit.data.map_api import InterpolationMethod, ENCODING
