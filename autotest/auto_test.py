@@ -13,7 +13,7 @@ from l5kit.simulation.unroll import ClosedLoopSimulator
 from l5kit.simulation.dataset import SimulationConfig
 from l5kit.visualization.visualizer.visualizer import visualize
 from l5kit.visualization.visualizer.zarr_utils import simulation_out_to_visualizer_scene
-from autotest.model.evaluation.metrics import CollisionMetric
+from autotest.model.evaluation.metrics import CollisionMetric, SafeDistanceMetric
 from autotest.model.model import Model
 from autotest.util.map_api import CustomMapAPI
 from autotest.util.vectorizer import CustomVectorizer
@@ -39,7 +39,8 @@ class AutoTest:
         
         # Assign metrics.
         metrics = [
-            CollisionMetric()
+            CollisionMetric(),
+            SafeDistanceMetric()
         ]
         
         # Load the ego model.
@@ -51,25 +52,29 @@ class AutoTest:
 
         self.sim = ClosedLoopSimulator(sim_config, vectorized_dataset, device, self.model, model_agents=None)
     
-    def run(self, scene_ids: List[int]):
+    def run(self, scene_ids: List[int], aggregated=True, visualized=False) -> dict:
         
         # Reset the model.
         self.model.reset()
         
-        # Unroll.
+        # Unroll the simulation.
         sim_outs = self.sim.unroll(scene_ids)
+        results = self.model.evaluation.results
         
-        # Print table.
-        # field_names = ["scene_id"] + [metric.metric_name for metric in metrics]
-        # table = PrettyTable(field_names=field_names)
-        # for scene_id in results:
-        #     row = [scene_id]
-        #     for metric_name, metric_value in results[scene_id].items():
-        #         row.append(str(max(metric_value)))
-        #     table.add_row(row)
-        # print(table)
+        # Visualize the simulation.
+        if visualized:
+            for sim_out in sim_outs:  # for each scene
+                vis_in = simulation_out_to_visualizer_scene(sim_out, self.model.map)
+                show(visualize(sim_out.scene_id, vis_in))
         
-        # Visualize.
-        for sim_out in sim_outs:  # for each scene
-            vis_in = simulation_out_to_visualizer_scene(sim_out, self.model.map)
-            show(visualize(sim_out.scene_id, vis_in))
+        # Aggregate the metric scores.
+        if aggregated:
+            aggregated_results = {}
+            for scene_id, _ in results.items():
+                aggregated_results[scene_id] = {}
+                for metric_name, scores in results[scene_id].items():
+                    aggregated_results[scene_id][metric_name] = min(scores)
+            return aggregated_results
+             
+        # Return the resulting metric scores.
+        return results

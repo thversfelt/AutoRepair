@@ -5,12 +5,12 @@ from autotest.model.context.scene import Scene
 
 
 class Control:
-    MIN_ACCELERATION: float = -3.0  # Min acceleration [m/s^2]
+    MIN_ACCELERATION: float = -8.0  # Min acceleration (max deceleration) [m/s^2]
     MAX_ACCELERATION: float = 3.0  # Max acceleration [m/s^2]
     MIN_STEER: float = -math.radians(45.0)  # Min yaw rate [rad/s]
     MAX_STEER: float = math.radians(45.0)  # Max yaw rate [rad/s]
 
-    def process(self, scene: Scene, steer: np.float, acceleration: np.float):
+    def process(self, scene: Scene, steer: float, acceleration: float) -> tuple:
         """Implements The Kinematic Bicycle Model: a Consistent Model for Planning Feasible Trajectories for Autonomous
                 Vehicles? (2017)"""
         steer = np.clip(steer, self.MIN_STEER, self.MAX_STEER)

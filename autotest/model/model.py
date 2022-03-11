@@ -26,20 +26,22 @@ class Model(nn.Module):
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         self.perception.process(data_batch)
 
-        positions = []
-        yaws = []
+        predicted_positions = []
+        predicted_yaws = []
     
         for _, scene in self.perception.scenes.items():
-            self.evaluation.evaluate(scene)
-            position, yaw = Planning().process(scene)
-            positions.append(position)
-            yaws.append(yaw)
+            predicted_position, predicted_yaw = Planning().process(scene)
+            self.evaluation.evaluate(scene, predicted_position, predicted_yaw)
+            
+            predicted_positions.append(predicted_position)
+            predicted_yaws.append(predicted_yaw)
+            
 
-        positions = torch.tensor(positions)
-        yaws = torch.tensor(yaws)
+        predicted_positions = torch.tensor(predicted_positions)
+        predicted_yaws = torch.tensor(predicted_yaws)
         
         num_of_scenes = len(self.perception.scenes)
         return {
-            "positions": torch.reshape(positions, [num_of_scenes, 1, 2]),
-            "yaws": torch.reshape(yaws, [num_of_scenes, 1, 1])
+            "positions": torch.reshape(predicted_positions, [num_of_scenes, 1, 2]),
+            "yaws": torch.reshape(predicted_yaws, [num_of_scenes, 1, 1])
         }

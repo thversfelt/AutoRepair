@@ -12,8 +12,10 @@ class Agent:
     def __init__(self, map: CustomMapAPI, scene_index: int):
         self.map: CustomMapAPI= map
         self.scene_index: int = scene_index
-        self.position: np.array = None
-        self.velocity: np.array = None
+        self.position: np.ndarray = None
+        self.yaw: float = None
+        self.extent: np.ndarray = None
+        self.velocity: np.ndarray = None
         self.speed: float = None
         self.route: Deque[str] = None
 
@@ -24,11 +26,14 @@ class VehicleAgent(Agent):
         super().__init__(map, scene_index)
         self.id: int = id
         self.parked: bool = False
-        self.local_position: np.array = None
+        self.local_yaw: np.ndarray = None
+        self.local_position: np.ndarray = None
 
     def update(self, data_batch: Dict[str, torch.Tensor], index: int):
         self.index = index
         self.update_position(data_batch)
+        self.update_yaw(data_batch)
+        self.update_extent(data_batch)
         self.update_velocity(data_batch)
         self.update_route(data_batch)
         
@@ -41,6 +46,14 @@ class VehicleAgent(Agent):
 
         # Transform the position to the world reference system.
         self.position = transform_point(self.local_position, world_from_ego)
+    
+    def update_yaw(self, data_batch: Dict[str, torch.Tensor]):
+        self.local_yaw = data_batch["all_other_agents_history_yaws"][self.scene_index][self.index][0].cpu().numpy()
+        ego_yaw = data_batch["yaw"][self.scene_index].cpu().numpy()
+        self.yaw = ego_yaw + self.local_yaw
+        
+    def update_extent(self, data_batch: Dict[str, torch.Tensor]):
+        self.extent = data_batch["all_other_agents_history_extents"][self.scene_index][self.index][0].cpu().numpy()
     
     def update_velocity(self, data_batch: Dict[str, torch.Tensor]):
         # Get the availability of the agent in the scene's frames.
@@ -124,6 +137,7 @@ class EgoAgent(Agent):
     def __init__(self, map: CustomMapAPI, scene_index: int):
         super().__init__(map, scene_index)
         self.length: float = None
+        self.width: float = None
         self.leader: VehicleAgent = None
         self.traffic_light = None
         self.world_from_ego = None
@@ -132,8 +146,9 @@ class EgoAgent(Agent):
     def update(self, data_batch: Dict[str, torch.Tensor], agents: Dict[int, VehicleAgent]):
         self.update_transformation_matrices(data_batch)
         self.update_position(data_batch)
+        self.update_yaw(data_batch)
+        self.update_extent(data_batch)
         self.update_velocity(data_batch)
-        self.update_length(data_batch)
         self.update_route(data_batch)
         self.update_leader(agents)
         self.update_traffic_light(data_batch)
@@ -143,8 +158,15 @@ class EgoAgent(Agent):
         self.ego_from_world = data_batch["agent_from_world"][self.scene_index].cpu().numpy()
     
     def update_position(self, data_batch: Dict[str, torch.Tensor]):
-        local_position = np.zeros(2)
-        self.position = transform_point(local_position, self.world_from_ego)
+        self.position = data_batch["centroid"][self.scene_index].cpu().numpy()
+    
+    def update_yaw(self, data_batch: Dict[str, torch.Tensor]):
+        self.yaw = data_batch["yaw"][self.scene_index].cpu().numpy()
+    
+    def update_extent(self, data_batch: Dict[str, torch.Tensor]):
+        self.extent = data_batch["extent"][self.scene_index][:2].cpu().numpy()
+        self.length = self.extent[0]
+        self.width = self.extent[1]
     
     def update_velocity(self, data_batch: Dict[str, torch.Tensor]):   
         # Get the availability of the ego in the scene's frames.
@@ -168,9 +190,6 @@ class EgoAgent(Agent):
         
         # Calculate the ego's speed.
         self.speed = np.linalg.norm(self.velocity)
-    
-    def update_length(self, data_batch: Dict[str, torch.Tensor]):
-        self.length = data_batch['extent'][self.scene_index][0].cpu().numpy()
         
     def update_route(self, data_batch: Dict[str, torch.Tensor]):
         if self.route is None:

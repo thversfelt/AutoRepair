@@ -1,7 +1,10 @@
+import pandas as pd
+
 from autotest.auto_test import AutoTest
 
 
 if __name__ == '__main__':
-    scene_ids = [96]
+    scene_ids = [11]  # 96
     autotest = AutoTest()
-    autotest.run(scene_ids)
+    results = autotest.run(scene_ids, visualized=True)
+    print(pd.DataFrame.from_dict(results))
