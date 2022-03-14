@@ -13,7 +13,7 @@ from l5kit.simulation.unroll import ClosedLoopSimulator
 from l5kit.simulation.dataset import SimulationConfig
 from l5kit.visualization.visualizer.visualizer import visualize
 from l5kit.visualization.visualizer.zarr_utils import simulation_out_to_visualizer_scene
-from autotest.model.evaluation.metrics import CollisionMetric, SafeDistanceMetric
+from autotest.model.evaluation.metrics import CollisionMetric, SafeDistanceMetric, TrafficLightsMetric
 from autotest.model.model import Model
 from autotest.util.map_api import CustomMapAPI
 from autotest.util.vectorizer import CustomVectorizer
@@ -40,7 +40,8 @@ class AutoTest:
         # Assign metrics.
         metrics = [
             CollisionMetric(),
-            SafeDistanceMetric()
+            SafeDistanceMetric(),
+            TrafficLightsMetric()
         ]
         
         # Load the ego model.

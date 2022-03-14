@@ -214,31 +214,32 @@ class EgoAgent(Agent):
         self.route = self.map.get_route(trajectory)
         
     def adjust_route(self):
-        # Has next lane.
-        has_next_lane = len(self.route) > 1
-        
-        # Ensure there are at least two lanes (the current lane, and the next lane), otherwise extend the route.
-        if not has_next_lane:
-            return self.extend_route()
-        
         # Get the next lane's id.
         next_lane_id = self.route[1]
         
         # Check if the ego is in its next lane. 
-        in_next_lane = self.map.in_lane_bounds(self.position, next_lane_id)
+        in_next_lane = self.map.in_lane(self.position, next_lane_id)
         
         # The first lane of the route is not the current lane anymore, remove it from the route.
         if in_next_lane:
             self.route.popleft()
+
+        # Ensure there are at least two lanes (the current lane, and the next lane), otherwise extend the route.
+        if len(self.route) <= 1:
+            self.extend_route()
             
     def extend_route(self):
         current_lane_id = self.route[0]
         ahead_lanes_ids = self.map.get_ahead_lanes_ids(current_lane_id)
+        change_lanes_ids = self.map.get_change_lanes_ids(current_lane_id)
         
-        if len(ahead_lanes_ids) == 0:
-            return
+        if len(ahead_lanes_ids) > 0:
+            next_lane_id = random.choice(ahead_lanes_ids)
+        elif len(change_lanes_ids) > 0:
+            next_lane_id = random.choice(change_lanes_ids)
+        else:
+            next_lane_id = current_lane_id
         
-        next_lane_id = random.choice(ahead_lanes_ids)
         self.route.append(next_lane_id)
 
     def update_leader(self, agents: Dict[int, VehicleAgent]):

@@ -4,7 +4,7 @@ from typing import List
 from l5kit.configs.config import load_metadata
 from l5kit.data import MapAPI, DataManager
 from l5kit.data.map_api import InterpolationMethod, ENCODING
-from l5kit.data.proto.road_network_pb2 import Lane, MapElement
+from l5kit.data.proto.road_network_pb2 import Lane, MapElement, RoadNetworkSegment
 from collections import deque
 
 
@@ -15,6 +15,32 @@ class CustomMapAPI(MapAPI):
         world_to_ecef = np.array(dataset_meta["world_to_ecef"], dtype=np.float64)
         protobuf_map_path = dm.require(cfg["raster_params"]["semantic_map_key"])
         super().__init__(protobuf_map_path, world_to_ecef)
+        
+        self.lanes_ids = self.get_lanes_ids()
+        self.segments_ids = self.get_segments_ids()
+
+    def get_lanes_ids(self) -> List[str]:
+        lanes_ids = []
+        
+        for element in self.elements:
+            if self.is_lane(element):
+                lane_id = self.id_as_str(element.id)
+                lanes_ids.append(lane_id)
+                
+        return lanes_ids
+
+    def get_segments_ids(self) -> List[str]:
+        segments_ids = []
+        
+        for element in self.elements:
+            if self.is_segment(element):
+                segment_id = self.id_as_str(element.id)
+                segments_ids.append(segment_id)
+                
+        return segments_ids
+    
+    def is_segment(self, element: MapElement) -> bool:
+        return bool(element.element.HasField("segment"))
 
     def get_route(self, trajectory: np.ndarray) -> List[str]:
         # Ensure the trajectory has a single position.
@@ -112,11 +138,9 @@ class CustomMapAPI(MapAPI):
             str: The lane ids of the lanes at the given position.
         """
         lanes_ids = []
-        for element in self.elements:
-            if not self.is_lane(element): continue
-            lane_id = self.id_as_str(element.id)
-            if not self.in_lane(position, lane_id): continue
-            lanes_ids.append(lane_id)
+        for lane_id in self.lanes_ids:
+            if self.in_lane(position, lane_id): 
+                lanes_ids.append(lane_id)
         return lanes_ids
 
     def get_closest_lane_midpoints(self, position: np.ndarray, lane_id: str) -> np.ndarray:
@@ -145,6 +169,10 @@ class CustomMapAPI(MapAPI):
     def get_lane(self, lane_id: str) -> Lane:
         element = self.get_element(lane_id)
         return element.element.lane
+
+    def get_segment(self, segment_id: str) -> RoadNetworkSegment:
+        element = self.get_element(segment_id)
+        return element.element.segment
 
     def get_connected_lanes_ids(self, lane_id: str) -> List[str]:
         ahead_lanes_ids = self.get_ahead_lanes_ids(lane_id)
@@ -218,6 +246,13 @@ class CustomMapAPI(MapAPI):
         lane_right_boundary = lane_coords["xyz_right"][:, :2]
         lane_polygon = np.concatenate([lane_left_boundary, lane_right_boundary[::-1], [lane_left_boundary[0]]])
         return lane_polygon
+
+    def get_lane_speed_limit(self, lane_id: str) -> float:
+        lane = self.get_lane(lane_id)
+        segment_or_junction_id = self.id_as_str(lane.parent_segment_or_junction)
+        if segment_or_junction_id in self.segments_ids:
+            segment = self.get_segment(segment_or_junction_id)
+            return segment.speed_limit_meters_per_second
 
     def in_bounds(self, position: np.ndarray, bounds: np.ndarray) -> bool:
         x = position[0]

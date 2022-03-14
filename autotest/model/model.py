@@ -36,9 +36,8 @@ class Model(nn.Module):
             predicted_positions.append(predicted_position)
             predicted_yaws.append(predicted_yaw)
             
-
-        predicted_positions = torch.tensor(predicted_positions)
-        predicted_yaws = torch.tensor(predicted_yaws)
+        predicted_positions = torch.tensor(np.array(predicted_positions))
+        predicted_yaws = torch.tensor(np.array(predicted_yaws))
         
         num_of_scenes = len(self.perception.scenes)
         return {
