@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from typing import Dict, List
+from typing import Callable, Dict, List
 from autotest.model.evaluation.evaluation import Evaluation
 from autotest.model.evaluation.metrics import Metric
 from autotest.model.modules.control import Control
@@ -17,20 +17,21 @@ class Model(nn.Module):
         super().__init__()
         self.map = map
         self.metrics = metrics
-        self.reset()
 
-    def reset(self):
+    def initialize(self, planning):
         self.perception = Perception(self.map)
+        self.planning = planning
         self.evaluation = Evaluation(self.metrics)
         
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        self.perception.process(data_batch)
 
         predicted_positions = []
         predicted_yaws = []
-    
+        
+        self.perception.process(data_batch)
+        
         for _, scene in self.perception.scenes.items():
-            predicted_position, predicted_yaw = Planning().process(scene)
+            predicted_position, predicted_yaw = self.planning.process(scene)
             self.evaluation.evaluate(scene, predicted_position, predicted_yaw)
             
             predicted_positions.append(predicted_position)

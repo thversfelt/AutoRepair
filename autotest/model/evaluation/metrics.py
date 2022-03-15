@@ -20,10 +20,10 @@ class CollisionMetric(Metric):
     def evaluate(self, scene: Scene, predicted_position: np.ndarray, predicted_yaw: float) -> float:
         super().evaluate(scene, predicted_position, predicted_yaw)
         
+        min_score = 0.0
+        
         ego_bounding_box = _get_bounding_box(self.ego_predicted_position, self.ego_predicted_yaw, scene.ego.extent)
         ego_area = scene.ego.length * scene.ego.width
-        
-        min_score = 0.0
         
         for _, agent in scene.agents.items():
             
@@ -54,12 +54,13 @@ class TrafficLightsMetric(Metric):
     def evaluate(self, scene: Scene, predicted_position: np.ndarray, predicted_yaw: float) -> float:
         super().evaluate(scene, predicted_position, predicted_yaw)
         
-        current_lane_id = scene.ego.route[0]
-        next_lane_id = scene.ego.route[1]
-        in_next_lane = scene.map.in_lane(self.ego_predicted_position, next_lane_id)
-        
         score = 0.0
         
+        current_lane_id = scene.ego.route[0]
+        next_lane_id = scene.ego.route[1]
+        
+        in_next_lane = scene.map.in_lane(self.ego_predicted_position, next_lane_id)
+
         if in_next_lane and scene.ego.traffic_light == TrafficLights.RED:
             score = -1.0 * scene.ego.speed / scene.map.get_lane_speed_limit(current_lane_id)
             

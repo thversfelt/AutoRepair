@@ -15,6 +15,7 @@ from l5kit.visualization.visualizer.visualizer import visualize
 from l5kit.visualization.visualizer.zarr_utils import simulation_out_to_visualizer_scene
 from autotest.model.evaluation.metrics import CollisionMetric, SafeDistanceMetric, TrafficLightsMetric
 from autotest.model.model import Model
+from autotest.model.modules.planning import Planning
 from autotest.util.map_api import CustomMapAPI
 from autotest.util.vectorizer import CustomVectorizer
 from prettytable import PrettyTable
@@ -53,10 +54,10 @@ class AutoTest:
 
         self.sim = ClosedLoopSimulator(sim_config, vectorized_dataset, device, self.model, model_agents=None)
     
-    def run(self, scene_ids: List[int], aggregated=True, visualized=False) -> dict:
+    def run(self, planning, scene_ids: List[int], aggregated=True, visualized=False) -> dict:
         
-        # Reset the model.
-        self.model.reset()
+        # Initialize the model.
+        self.model.initialize(planning)
         
         # Unroll the simulation.
         sim_outs = self.sim.unroll(scene_ids)

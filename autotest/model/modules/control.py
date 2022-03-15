@@ -5,6 +5,7 @@ from autotest.model.context.scene import Scene
 
 
 class Control:
+    
     MIN_ACCELERATION: float = -8.0  # Min acceleration (max deceleration) [m/s^2]
     MAX_ACCELERATION: float = 3.0  # Max acceleration [m/s^2]
     MIN_STEER: float = -math.radians(45.0)  # Min yaw rate [rad/s]
