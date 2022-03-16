@@ -1,27 +1,26 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from typing import Callable, Dict, List
+
+from typing import Dict, List
 from autotest.model.evaluation.evaluation import Evaluation
+from autotest.model.evaluation.instrumentation import Instrumentation
 from autotest.model.evaluation.metrics import Metric
-from autotest.model.modules.control import Control
-from autotest.model.modules.navigation import Navigation
 from autotest.model.modules.perception import Perception
-from autotest.model.modules.planning import Planning
+from autotest.model.modules.rule_set import RuleSet
 from autotest.util.map_api import CustomMapAPI
 
 
 class Model(nn.Module):
     
-    def __init__(self, map: CustomMapAPI, metrics: List[Metric]):
+    def __init__(self, map: CustomMapAPI):
         super().__init__()
         self.map = map
-        self.metrics = metrics
 
-    def initialize(self, planning):
+    def initialize(self, rule_set: RuleSet, metrics: List[Metric]):
         self.perception = Perception(self.map)
-        self.planning = planning
-        self.evaluation = Evaluation(self.metrics)
+        self.instrumentation = Instrumentation(rule_set)
+        self.evaluation = Evaluation(metrics)
         
     def forward(self, data_batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
 
@@ -31,8 +30,9 @@ class Model(nn.Module):
         self.perception.process(data_batch)
         
         for _, scene in self.perception.scenes.items():
-            predicted_position, predicted_yaw = self.planning.process(scene)
-            self.evaluation.evaluate(scene, predicted_position, predicted_yaw)
+            predicted_position, predicted_yaw = self.instrumentation.instrumented_rule_set.process(scene)
+            self.evaluation.process(scene, predicted_position, predicted_yaw)
+            self.instrumentation.process(scene)
             
             predicted_positions.append(predicted_position)
             predicted_yaws.append(predicted_yaw)

@@ -1,6 +1,6 @@
 import numpy as np
 
-from l5kit.planning.utils import _get_bounding_box, _get_sides
+from l5kit.planning.utils import _get_bounding_box
 from l5kit.geometry.transform import transform_point
 from autotest.model.context.scene import Scene
 from autotest.model.modules.traffic_lights import TrafficLights
@@ -9,7 +9,7 @@ from autotest.model.modules.traffic_lights import TrafficLights
 class Metric:
     name = ""
     
-    def evaluate(self, scene: Scene, predicted_position: np.ndarray, predicted_yaw: float) -> float:
+    def process(self, scene: Scene, predicted_position: np.ndarray, predicted_yaw: float) -> float:
         self.ego_predicted_position = transform_point(predicted_position, scene.ego.world_from_ego)
         self.ego_predicted_yaw = scene.ego.yaw + predicted_yaw
 
@@ -17,8 +17,8 @@ class Metric:
 class CollisionMetric(Metric):
     name = "collision"
     
-    def evaluate(self, scene: Scene, predicted_position: np.ndarray, predicted_yaw: float) -> float:
-        super().evaluate(scene, predicted_position, predicted_yaw)
+    def process(self, scene: Scene, predicted_position: np.ndarray, predicted_yaw: float) -> float:
+        super().process(scene, predicted_position, predicted_yaw)
         
         min_score = 0.0
         
@@ -40,8 +40,8 @@ class CollisionMetric(Metric):
 class SafeDistanceMetric(Metric):
     name = "safe_distance"
     
-    def evaluate(self, scene: Scene, predicted_position: np.ndarray, predicted_yaw: float) -> float:
-        super().evaluate(scene, predicted_position, predicted_yaw)
+    def process(self, scene: Scene, predicted_position: np.ndarray, predicted_yaw: float) -> float:
+        super().process(scene, predicted_position, predicted_yaw)
         
         score = 0.0
         
@@ -51,8 +51,8 @@ class SafeDistanceMetric(Metric):
 class TrafficLightsMetric(Metric):
     name = "traffic_lights"
     
-    def evaluate(self, scene: Scene, predicted_position: np.ndarray, predicted_yaw: float) -> float:
-        super().evaluate(scene, predicted_position, predicted_yaw)
+    def process(self, scene: Scene, predicted_position: np.ndarray, predicted_yaw: float) -> float:
+        super().process(scene, predicted_position, predicted_yaw)
         
         score = 0.0
         

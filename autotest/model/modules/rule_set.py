@@ -6,7 +6,7 @@ from autotest.model.modules.navigation import Navigation
 from autotest.model.modules.traffic_lights import TrafficLights
 
 
-class Planning:
+class RuleSet:
 
     def process(self, scene: Scene) -> tuple:
         steer = Navigation().process(scene)
@@ -17,3 +17,6 @@ class Planning:
             acceleration = AdaptiveCruiseControl().process(scene)
         
         return Control().process(scene, steer, acceleration)
+    
+def rule_set_scope() -> dict:
+    return globals()

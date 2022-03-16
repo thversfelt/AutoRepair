@@ -8,10 +8,10 @@ from autotest.model.evaluation.metrics import Metric
 class Evaluation:
     
     def __init__(self, metrics: List[Metric]) -> None:
-        self.metrics: Metric = metrics
+        self.metrics: List[Metric] = metrics
         self.results: dict = {}
         
-    def evaluate(self, scene: Scene, predicted_position: np.ndarray, predicted_yaw: float):
+    def process(self, scene: Scene, predicted_position: np.ndarray, predicted_yaw: float):
         for metric in self.metrics:
             if scene.id not in self.results:
                 self.results[scene.id] = {}
@@ -19,6 +19,5 @@ class Evaluation:
             if metric.name not in self.results[scene.id]:
                 self.results[scene.id][metric.name] = []
             
-            score = metric.evaluate(scene, predicted_position, predicted_yaw)
+            score = metric.process(scene, predicted_position, predicted_yaw)
             self.results[scene.id][metric.name].append(score)
-    

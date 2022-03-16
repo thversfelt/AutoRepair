@@ -3,7 +3,7 @@ import numpy as np
 from typing import List, Optional
 from l5kit.data import filter_agents_by_distance, filter_agents_by_labels, filter_tl_faces_by_status
 from l5kit.data.filter import filter_agents_by_track_id, get_other_agents_ids
-from l5kit.data.map_api import TLFacesColors, MapAPI
+from l5kit.data.map_api import MapAPI
 from l5kit.vectorization.vectorizer import Vectorizer
 from l5kit.sampling.agent_sampling import get_relative_poses
 

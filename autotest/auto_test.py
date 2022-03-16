@@ -1,9 +1,6 @@
 import os
 import torch
 
-from l5kit.cle.closed_loop_evaluator import ClosedLoopEvaluator, EvaluationPlan
-from l5kit.cle.metrics import (CollisionFrontMetric, CollisionRearMetric, CollisionSideMetric)
-from l5kit.cle.validators import RangeValidator, ValidationCountingAggregator
 from typing import List
 from bokeh.io import show
 from l5kit.configs import load_config_data
@@ -15,10 +12,9 @@ from l5kit.visualization.visualizer.visualizer import visualize
 from l5kit.visualization.visualizer.zarr_utils import simulation_out_to_visualizer_scene
 from autotest.model.evaluation.metrics import CollisionMetric, SafeDistanceMetric, TrafficLightsMetric
 from autotest.model.model import Model
-from autotest.model.modules.planning import Planning
+from autotest.model.modules.rule_set import RuleSet
 from autotest.util.map_api import CustomMapAPI
 from autotest.util.vectorizer import CustomVectorizer
-from prettytable import PrettyTable
 
 
 class AutoTest:
@@ -37,16 +33,9 @@ class AutoTest:
         vectorizer = CustomVectorizer(config, map)
         vectorized_dataset = EgoDatasetVectorized(config, dataset, vectorizer)
         print(vectorized_dataset)
-        
-        # Assign metrics.
-        metrics = [
-            CollisionMetric(),
-            SafeDistanceMetric(),
-            TrafficLightsMetric()
-        ]
-        
+
         # Load the ego model.
-        self.model = Model(map, metrics).to(device)
+        self.model = Model(map).to(device)
 
         sim_config = SimulationConfig(use_ego_gt=False, use_agents_gt=True, disable_new_agents=True,
                                 distance_th_far=500, distance_th_close=50, num_simulation_steps=248,
@@ -54,14 +43,22 @@ class AutoTest:
 
         self.sim = ClosedLoopSimulator(sim_config, vectorized_dataset, device, self.model, model_agents=None)
     
-    def run(self, planning, scene_ids: List[int], aggregated=True, visualized=False) -> dict:
+    def run(self, planning: RuleSet, scene_ids: List[int], aggregated=True, visualized=False) -> tuple:
+        # Assign metrics.
+        metrics = [
+            CollisionMetric(),
+            SafeDistanceMetric(),
+            TrafficLightsMetric()
+        ]
         
         # Initialize the model.
-        self.model.initialize(planning)
+        self.model.initialize(planning, metrics)
         
         # Unroll the simulation.
         sim_outs = self.sim.unroll(scene_ids)
-        results = self.model.evaluation.results
+        
+        evaluation_results = self.model.evaluation.results
+        instrumentation_results = self.model.instrumentation.results
         
         # Visualize the simulation.
         if visualized:
@@ -70,13 +67,13 @@ class AutoTest:
                 show(visualize(sim_out.scene_id, vis_in))
         
         # Aggregate the metric scores.
-        if aggregated:
-            aggregated_results = {}
-            for scene_id, _ in results.items():
-                aggregated_results[scene_id] = {}
-                for metric_name, scores in results[scene_id].items():
-                    aggregated_results[scene_id][metric_name] = min(scores)
-            return aggregated_results
+        # if aggregated:
+        #     aggregated_results = {}
+        #     for scene_id, _ in evaluation_results.items():
+        #         aggregated_results[scene_id] = {}
+        #         for metric_name, scores in evaluation_results[scene_id].items():
+        #             aggregated_results[scene_id][metric_name] = min(scores)
+        #     return aggregated_results
              
         # Return the resulting metric scores.
-        return results
+        return evaluation_results, instrumentation_results
