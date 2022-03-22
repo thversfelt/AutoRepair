@@ -1,3 +1,4 @@
+import ast
 import os
 import torch
 
@@ -43,7 +44,7 @@ class AutoTest:
 
         self.sim = ClosedLoopSimulator(sim_config, vectorized_dataset, device, self.model, model_agents=None)
     
-    def run(self, planning: RuleSet, scene_ids: List[int], aggregated=True, visualized=False) -> tuple:
+    def run(self, rule_set: ast.Module, scene_ids: List[int], aggregated=True, visualized=False) -> tuple:
         # Assign metrics.
         metrics = [
             CollisionMetric(),
@@ -52,7 +53,7 @@ class AutoTest:
         ]
         
         # Initialize the model.
-        self.model.initialize(planning, metrics)
+        self.model.initialize(rule_set, metrics)
         
         # Unroll the simulation.
         sim_outs = self.sim.unroll(scene_ids)

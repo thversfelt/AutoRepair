@@ -5,19 +5,18 @@ import random
 from typing import Callable, List, Tuple, Dict
 import astor
 import numpy as np
+from autotest.auto_test import AutoTest
+from autotest.model.modules.rule_set import RuleSet
 from pyariel import utilities, instrumentation, mutations
 
 
 class PyAriel:
-    def run(self, rule_set: Callable, test_suite: List[Callable], test_scope: Dict) -> Dict[ast.Module, List[float]]:
-        source = inspect.getsource(rule_set)  # Retrieve the source code of the rule set.
-        rule_set_ast = ast.parse(source)  # Parse the source of the rule set into an AST.
-
-        archive = self.update_archive({}, rule_set_ast, test_suite, test_scope)
+    def run(self, test_suite: AutoTest, rule_set: ast.Module, scene_ids: List[int]) -> Dict[ast.Module, List[float]]:
+        archive = self.update_archive({}, test_suite, rule_set, scene_ids)
         while not all(len([score for score in objectives_scores if score >= 0.0]) == len(objectives_scores) for objectives_scores in archive.values()):
             parent_rule_set = self.select_parent(archive)
-            mutated_rule_set = self.generate_patch(parent_rule_set, test_suite, test_scope)
-            archive = self.update_archive(archive, mutated_rule_set, test_suite, test_scope)
+            mutated_rule_set = self.generate_patch(parent_rule_set, test_suite, scene_ids)
+            archive = self.update_archive(archive, mutated_rule_set, test_suite, scene_ids)
 
             print('------------------------ARCHIVE------------------------')
             for solution, objectives_scores in archive.items():

@@ -1,3 +1,4 @@
+import ast
 import numpy as np
 import torch
 import torch.nn as nn
@@ -17,7 +18,7 @@ class Model(nn.Module):
         super().__init__()
         self.map = map
 
-    def initialize(self, rule_set: RuleSet, metrics: List[Metric]):
+    def initialize(self, rule_set: ast.Module, metrics: List[Metric]):
         self.perception = Perception(self.map)
         self.instrumentation = Instrumentation(rule_set)
         self.evaluation = Evaluation(metrics)
@@ -30,7 +31,7 @@ class Model(nn.Module):
         self.perception.process(data_batch)
         
         for _, scene in self.perception.scenes.items():
-            predicted_position, predicted_yaw = self.instrumentation.instrumented_rule_set.process(scene)
+            predicted_position, predicted_yaw = self.instrumentation.rule_set.process(scene)
             self.evaluation.process(scene, predicted_position, predicted_yaw)
             self.instrumentation.process(scene)
             
