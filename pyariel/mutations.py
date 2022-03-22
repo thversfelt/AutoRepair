@@ -23,12 +23,12 @@ def change_threshold_value(condition: ast.Compare):
 def change_relational_direction(condition: ast.Compare):
     relational_operator = type(condition.ops[0])
     inverse = {
-        ast.Eq: ast.NotEq(),
-        ast.NotEq: ast.Eq(),
-        ast.Lt: ast.Gt(),
-        ast.Gt: ast.Lt(),
-        ast.LtE: ast.GtE(),
-        ast.GtE: ast.LtE(),
+        ast.Eq:     ast.NotEq(),
+        ast.NotEq:  ast.Eq(),
+        ast.Lt:     ast.Gt(),
+        ast.Gt:     ast.Lt(),
+        ast.LtE:    ast.GtE(),
+        ast.GtE:    ast.LtE(),
     }
     new_relational_operator = inverse[relational_operator]
     condition.ops = [new_relational_operator]
@@ -36,10 +36,10 @@ def change_relational_direction(condition: ast.Compare):
 
 def change_arithmetic_operation(condition: ast.Compare):
     inverse = {
-        ast.Add: ast.Sub(),
-        ast.Sub: ast.Add(),
-        ast.Mult: ast.Div(),
-        ast.Div: ast.Mult()
+        ast.Add:    ast.Sub(),
+        ast.Sub:    ast.Add(),
+        ast.Mult:   ast.Div(),
+        ast.Div:    ast.Mult()
     }
 
     binary_operations = []

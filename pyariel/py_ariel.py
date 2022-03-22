@@ -25,6 +25,9 @@ class PyAriel:
 
         return archive
 
+    def run_test_suite(self, test_suite: AutoTest, rule_set: ast.Module, scene_ids: List[int]):
+        pass
+
     def select_parent(self, archive: Dict[ast.Module, List[float]]) -> ast.Module:
         return random.choice(list(archive.keys()))
 
@@ -119,12 +122,12 @@ class PyAriel:
         path, statement = utilities.find_references(rule_set, path_lines, statement_line)
 
         if len(path) == 1:
-            mutation_operator = mutations.modify
+            mutate = mutations.modify
         else:
-            mutation_operator = random.choice([
+            mutate = random.choice([
                 mutations.modify,
                 mutations.shift
             ])
 
-        mutation_operator(rule_set, path, statement)
+        mutate(rule_set, path, statement)
         ast.fix_missing_locations(rule_set)
