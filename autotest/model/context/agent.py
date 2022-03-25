@@ -284,7 +284,7 @@ class EgoAgent(Agent):
             try:
                 traffic_light_to_color[face_id] = self.map.get_color_for_face(face_id).lower()
             except KeyError:
-                continue  # this happens only on KIRBY, 2 TLs have no match in the map
+                continue
         
         current_lane_id = self.route[0]
         self.traffic_light = self.map.get_tl_feature_for_lane(current_lane_id, traffic_light_to_color)

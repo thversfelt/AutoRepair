@@ -83,7 +83,7 @@ class AutoTest:
             for frame_index in range(num_of_frames):
                 if frame_index > violation_frame_index:
                     continue
-            
+                
                 scores = []
                 
                 for metric_name in metrics_scores[scene_id].keys():

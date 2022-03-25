@@ -2,7 +2,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Example",
+            "name": "AutoTest Example",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/autotest/example.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceRoot}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "justMyCode": true
+        },
+        {
+            "name": "Ariel Example",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/pyariel/example.py",
@@ -11,7 +23,7 @@
             "env": {
                 "PYTHONPATH": "${workspaceRoot}"
             },
-            "justMyCode": false
+            "justMyCode": true
         }
     ]
 }

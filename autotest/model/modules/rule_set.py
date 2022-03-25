@@ -10,7 +10,7 @@ class RuleSet:
     def process(self, scene: Scene) -> tuple:
         steer = Navigation().process(scene)
         
-        if scene.ego.traffic_light != TrafficLights.RED:
+        if scene.ego.traffic_light == TrafficLights.RED:
             acceleration = TrafficLights().process(scene)
         else:
             acceleration = AdaptiveCruiseControl().process(scene)

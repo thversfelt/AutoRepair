@@ -4,7 +4,7 @@ from typing import List
 from l5kit.configs.config import load_metadata
 from l5kit.data import MapAPI, DataManager
 from l5kit.data.map_api import InterpolationMethod, ENCODING
-from l5kit.data.proto.road_network_pb2 import Lane, MapElement, RoadNetworkSegment
+from l5kit.data.proto.road_network_pb2 import Lane, MapElement, RoadNetworkSegment, Junction
 from collections import deque
 
 
@@ -18,6 +18,7 @@ class CustomMapAPI(MapAPI):
         
         self.lanes_ids = self.get_lanes_ids()
         self.segments_ids = self.get_segments_ids()
+        self.junctions_ids = self.get_junctions_ids()
 
     def get_lanes_ids(self) -> List[str]:
         lanes_ids = []
@@ -39,8 +40,21 @@ class CustomMapAPI(MapAPI):
                 
         return segments_ids
     
+    def get_junctions_ids(self) -> List[str]:
+        junction_ids = []
+        
+        for element in self.elements:
+            if self.is_junction(element):
+                junction_id = self.id_as_str(element.id)
+                junction_ids.append(junction_id)
+                
+        return junction_ids
+    
     def is_segment(self, element: MapElement) -> bool:
         return bool(element.element.HasField("segment"))
+
+    def is_junction(self, element: MapElement) -> bool:
+        return bool(element.element.HasField("junction"))
 
     def get_route(self, trajectory: np.ndarray) -> List[str]:
         # Ensure the trajectory has a single position.
@@ -105,25 +119,26 @@ class CustomMapAPI(MapAPI):
                 lane_id = visited_lanes_ids[lane_id]
             break
         
-        # import matplotlib.pyplot as plt
-        # plt.figure()
-        # for visited_lane_id in visited_lanes_ids:
-        #     lane_polygon = self.get_lane_polygon(visited_lane_id)
-        #     xs, ys = zip(*lane_polygon) #create lists of x and y values
-        #     plt.plot(xs,ys, color='green')
-        # for unvisited_lane_id in unvisited_lanes_ids:
-        #     lane_polygon = self.get_lane_polygon(unvisited_lane_id)
-        #     xs, ys = zip(*lane_polygon) #create lists of x and y values
-        #     plt.plot(xs,ys, color='red')
+        import matplotlib.pyplot as plt
+        plt.figure()
+        for visited_lane_id in visited_lanes_ids:
+            lane_polygon = self.get_lane_polygon(visited_lane_id)
+            xs, ys = zip(*lane_polygon) #create lists of x and y values
+            plt.plot(xs,ys, color='green')
+        for candidate_lane_id in candidate_lanes_ids:
+            lane_polygon = self.get_lane_polygon(candidate_lane_id)
+            xs, ys = zip(*lane_polygon) #create lists of x and y values
+            plt.plot(xs,ys, color='red')
         # for lane_id in route:
         #     lane_polygon = self.get_lane_polygon(lane_id)
         #     xs, ys = zip(*lane_polygon) #create lists of x and y values
         #     plt.plot(xs,ys, color='blue')
-        # for position in trajectory:
-        #     x = position[0]
-        #     y = position[1]
-        #     plt.scatter(x, y, color='black', s=1)
-        # plt.show()
+        for position in trajectory:
+            x = position[0]
+            y = position[1]
+            plt.scatter(x, y, color='black', s=1)
+        plt.axis('scaled')
+        plt.show()
         
         return route
     
@@ -173,6 +188,14 @@ class CustomMapAPI(MapAPI):
     def get_segment(self, segment_id: str) -> RoadNetworkSegment:
         element = self.get_element(segment_id)
         return element.element.segment
+    
+    def get_junction(self, junction_id: str) -> Junction:
+        element = self.get_element(junction_id)
+        return element.element.junction
+
+    def get_segment_speed_limit(self, segment_id: str) -> float:
+        segment = self.get_segment(segment_id)
+        return segment.speed_limit_meters_per_second
 
     def get_connected_lanes_ids(self, lane_id: str) -> List[str]:
         ahead_lanes_ids = self.get_ahead_lanes_ids(lane_id)
@@ -250,9 +273,18 @@ class CustomMapAPI(MapAPI):
     def get_lane_speed_limit(self, lane_id: str) -> float:
         lane = self.get_lane(lane_id)
         segment_or_junction_id = self.id_as_str(lane.parent_segment_or_junction)
+        
         if segment_or_junction_id in self.segments_ids:
-            segment = self.get_segment(segment_or_junction_id)
-            return segment.speed_limit_meters_per_second
+            return self.get_segment_speed_limit(segment_or_junction_id)
+
+    def is_lane_in_junction(self, lane_id: str) -> bool:
+        lane = self.get_lane(lane_id)
+        segment_or_junction_id = self.id_as_str(lane.parent_segment_or_junction)
+        
+        if segment_or_junction_id in self.junctions_ids:
+            return True
+        else:
+            return False
 
     def in_bounds(self, position: np.ndarray, bounds: np.ndarray) -> bool:
         x = position[0]

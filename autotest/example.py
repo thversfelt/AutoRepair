@@ -1,12 +1,14 @@
 import ast
 import inspect
+import random
+import autotest
 
 from autotest.auto_test import AutoTest
-from autotest.model.modules.rule_set import RuleSet
 
 
 if __name__ == '__main__':
     scene_ids = [96]
-    autotest = AutoTest()
-    rule_set = ast.parse(inspect.getsource(RuleSet))
-    results = autotest.run(rule_set, scene_ids)
+    #scene_ids = random.sample(range(0, 100), 10)
+    auto_test = AutoTest()
+    rule_set = ast.parse(inspect.getsource(autotest.model.modules.rule_set))
+    results = auto_test.run(rule_set, scene_ids, visualized=True)
