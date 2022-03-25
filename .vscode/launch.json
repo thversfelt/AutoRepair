@@ -5,7 +5,7 @@
             "name": "Example",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/autotest/example.py",
+            "program": "${workspaceFolder}/pyariel/example.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceRoot}",
             "env": {

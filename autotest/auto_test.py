@@ -13,7 +13,6 @@ from l5kit.visualization.visualizer.visualizer import visualize
 from l5kit.visualization.visualizer.zarr_utils import simulation_out_to_visualizer_scene
 from autotest.model.evaluation.metrics import CollisionMetric, SafeDistanceMetric, TrafficLightsMetric
 from autotest.model.model import Model
-from autotest.model.modules.rule_set import RuleSet
 from autotest.util.map_api import CustomMapAPI
 from autotest.util.vectorizer import CustomVectorizer
 
@@ -44,7 +43,7 @@ class AutoTest:
 
         self.sim = ClosedLoopSimulator(sim_config, vectorized_dataset, device, self.model, model_agents=None)
     
-    def run(self, rule_set: ast.Module, scene_ids: List[int], aggregated=True, visualized=False) -> tuple:
+    def run(self, rule_set: ast.Module, scene_ids: List[int], visualized=False) -> tuple:
         # Assign metrics.
         metrics = [
             CollisionMetric(),
@@ -58,23 +57,45 @@ class AutoTest:
         # Unroll the simulation.
         sim_outs = self.sim.unroll(scene_ids)
         
-        evaluation_results = self.model.evaluation.results
-        instrumentation_results = self.model.instrumentation.results
-        
         # Visualize the simulation.
         if visualized:
             for sim_out in sim_outs:  # for each scene
                 vis_in = simulation_out_to_visualizer_scene(sim_out, self.model.map)
                 show(visualize(sim_out.scene_id, vis_in))
         
-        # Aggregate the metric scores.
-        # if aggregated:
-        #     aggregated_results = {}
-        #     for scene_id, _ in evaluation_results.items():
-        #         aggregated_results[scene_id] = {}
-        #         for metric_name, scores in evaluation_results[scene_id].items():
-        #             aggregated_results[scene_id][metric_name] = min(scores)
-        #     return aggregated_results
-             
-        # Return the resulting metric scores.
-        return evaluation_results, instrumentation_results
+        # Obtain the metrics scores, and executed statements per frame per scene.
+        metrics_scores = self.model.evaluation.metrics_scores
+        executed_statements = self.model.instrumentation.executed_statements
+
+        # Aggregate the results.
+        results = {}
+        
+        for scene_id in scene_ids:
+            if scene_id not in results:
+                results[scene_id] = {
+                    "metrics_scores": [],
+                    "executed_statements": []
+                }
+
+            num_of_frames = len(executed_statements[scene_id])
+            violation_frame_index = num_of_frames - 1
+            
+            for frame_index in range(num_of_frames):
+                if frame_index > violation_frame_index:
+                    continue
+            
+                scores = []
+                
+                for metric_name in metrics_scores[scene_id].keys():
+                    score = metrics_scores[scene_id][metric_name][frame_index]
+                    scores.append(score)
+                    
+                    if score < 0.0:
+                        violation_frame_index = frame_index
+                
+                statements = executed_statements[scene_id][frame_index]
+                
+                results[scene_id]["metrics_scores"] = scores
+                results[scene_id]["executed_statements"] = statements
+        
+        return results

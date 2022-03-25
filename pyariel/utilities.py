@@ -1,17 +1,8 @@
 import ast
 import math
 import random
+
 from typing import Dict, List, Tuple, Any
-
-
-def suspiciousness(
-        statement: int,
-        passed: Dict[int, int], failed: Dict[int, int],
-        total_passed: int, total_failed: int) -> float:
-    """Tarantula suspiciousness"""
-    percentage_failed = failed[statement] / total_failed if total_failed > 0 else 0  # Prevent division by 0 error.
-    percentage_passed = passed[statement] / total_passed if total_passed > 0 else 1  # Prevent division by 0 error.
-    return percentage_failed / (percentage_passed + percentage_failed)
 
 
 def selection(population: Dict[int, float]) -> int:

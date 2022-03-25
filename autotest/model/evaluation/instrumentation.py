@@ -1,34 +1,32 @@
 import ast
-from copy import deepcopy
-import inspect
 
 from typing import Any
 from autotest.model.context.scene import Scene
-from autotest.model.modules.rule_set import RuleSet, rule_set_scope
+from autotest.model.modules.rule_set import RuleSet
 
 
 class Instrumentation:
     
     def __init__(self, rule_set: RuleSet) -> None:
         self.rule_set = self.instrument(rule_set)
-        self.results = {}
+        self.executed_statements = {}
 
     def instrument(self, rule_set: ast.Module) -> RuleSet:
         Instrumenter().visit(rule_set)
         ast.fix_missing_locations(rule_set)
 
-        scope = rule_set_scope()
+        scope = {}
         code = compile(rule_set, filename='', mode='exec')  # Compile the rule set.
         exec(code, scope)  # Execute the compiled rule set in the given scope.
 
         return scope.get('RuleSet')()  # Extract the callable rule set from the scope.
     
     def process(self, scene: Scene):
-        if scene.id not in self.results:
-            self.results[scene.id] = []
+        if scene.id not in self.executed_statements:
+            self.executed_statements[scene.id] = []
         
         executed_statements = self.rule_set.executed_statements
-        self.results[scene.id].append(executed_statements)
+        self.executed_statements[scene.id].append(executed_statements)
 
 class Instrumenter(ast.NodeTransformer):
     """Will instrument an AST containing, such in each of the bodies of every if-else statement, the test condition's

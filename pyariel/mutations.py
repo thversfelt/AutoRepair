@@ -52,6 +52,8 @@ def change_arithmetic_operation(condition: ast.Compare):
         arithmetic_operation = type(binary_operation.op)
         binary_operation.op = inverse[arithmetic_operation]
 
+def change_boolean(condition: ast.Compare):
+    pass
 
 def shift(rule_set: ast.Module, path: List[ast.If], statement: ast.If):
     possible_other_statements = [other_statement for other_statement in path if other_statement is not statement]
