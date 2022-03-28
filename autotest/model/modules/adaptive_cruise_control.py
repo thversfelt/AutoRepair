@@ -6,7 +6,7 @@ from autotest.model.context.scene import Scene
 class AdaptiveCruiseControl():
     
     JUNCTION_SPEED = 5.0 # [m/s]
-    FOLLOW_DISTANCE = 10.0 # [m]
+    FOLLOW_DISTANCE = 5.0 # [m]
     ACCELERATION = 1.0 # [m/s^2]
     DECELLERATION = -1.0 # [m/s^2]
 

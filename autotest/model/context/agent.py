@@ -1,9 +1,10 @@
 import random
+from time import time
 import numpy as np
 import torch
 
 from typing import Deque, Dict
-from l5kit.geometry.transform import transform_point, transform_points
+from l5kit.geometry.transform import transform_point, transform_points, yaw_as_rotation33
 from autotest.util.map_api import CustomMapAPI
 
 
@@ -12,25 +13,38 @@ class Agent:
     def __init__(self, map: CustomMapAPI, scene_index: int):
         self.map: CustomMapAPI= map
         self.scene_index: int = scene_index
+        
+        self.world_from_ego = None
+        self.ego_from_world = None
         self.position: np.ndarray = None
         self.yaw: float = None
         self.extent: np.ndarray = None
+        self.local_velocity: np.ndarray = None
         self.velocity: np.ndarray = None
         self.speed: float = None
         self.route: Deque[str] = None
+        
+    def update(self, data_batch: Dict[str, torch.Tensor]):
+        self.update_transformation_matrices(data_batch)
 
+    def update_transformation_matrices(self, data_batch: Dict[str, torch.Tensor]):
+        self.world_from_ego = data_batch["world_from_agent"][self.scene_index].cpu().numpy()
+        self.ego_from_world = data_batch["agent_from_world"][self.scene_index].cpu().numpy()
 
 class VehicleAgent(Agent):
     
     def __init__(self, map: CustomMapAPI, scene_index: int, id: int):
         super().__init__(map, scene_index)
+        
         self.id: int = id
         self.parked: bool = False
         self.local_yaw: np.ndarray = None
         self.local_position: np.ndarray = None
 
     def update(self, data_batch: Dict[str, torch.Tensor], index: int):
+        super().update(data_batch)
         self.index = index
+        
         self.update_position(data_batch)
         self.update_yaw(data_batch)
         self.update_extent(data_batch)
@@ -38,14 +52,11 @@ class VehicleAgent(Agent):
         self.update_route(data_batch)
         
     def update_position(self, data_batch: Dict[str, torch.Tensor]):
-        # Get the ego reference system to world reference system transformation matrix.
-        world_from_ego = data_batch["world_from_agent"][self.scene_index].cpu().numpy()
-        
         # Get the agent's local position.
         self.local_position = data_batch["all_other_agents_history_positions"][self.scene_index][self.index][0].cpu().numpy()
 
         # Transform the position to the world reference system.
-        self.position = transform_point(self.local_position, world_from_ego)
+        self.position = transform_point(self.local_position, self.world_from_ego)
     
     def update_yaw(self, data_batch: Dict[str, torch.Tensor]):
         self.local_yaw = data_batch["all_other_agents_history_yaws"][self.scene_index][self.index][0].cpu().numpy()
@@ -61,22 +72,22 @@ class VehicleAgent(Agent):
 
         # Ensure the agent's historical positions are known (are available).
         if not all(availability):
-            self.velocity = None
             self.speed = 0.0
+            self.local_velocity = np.array([self.speed, 0.0])
+            self.velocity = np.dot(self.world_from_ego[:2, :2], self.local_velocity)
             return
 
-        # Get the ego reference system to world reference system transformation matrix.
-        world_from_ego = data_batch["world_from_agent"][self.scene_index].cpu().numpy()
-        
+        # Get the simulator's time step size.
+        timestep = 0.1
+
         # Get the previous position of the agent in the scene.
         previous_local_position = data_batch["all_other_agents_history_positions"][self.scene_index][self.index][1].cpu().numpy()
         
-        # Transform the position to the world reference system.
-        previous_position = transform_point(previous_local_position, world_from_ego)
-        
+        # Calculate the ego's local velocity.
+        self.local_velocity = (self.local_position - previous_local_position) / timestep
+
         # Calculate the agent's velocity.
-        timestep = 0.1
-        self.velocity = (self.position - previous_position) / timestep
+        self.velocity = np.dot(self.world_from_ego[:2, :2], self.local_velocity)
         
         # Calculate the agent's speed.
         self.speed = np.linalg.norm(self.velocity)
@@ -88,9 +99,6 @@ class VehicleAgent(Agent):
             self.adjust_route()
         
     def determine_route(self, data_batch: Dict[str, torch.Tensor]):
-        # Get the ego reference system to world reference system transformation matrix.
-        world_from_ego = data_batch["world_from_agent"][self.scene_index].cpu().numpy()
-        
         # Get the availability of the agent in the scene's frames.
         availability = data_batch["all_other_agents_future_availability"][self.scene_index][self.index].cpu().numpy()
         
@@ -101,7 +109,7 @@ class VehicleAgent(Agent):
         trajectory = trajectory[availability]
         
         # Transform the trajectory to the world reference system.
-        trajectory = transform_points(trajectory, world_from_ego)
+        trajectory = transform_points(trajectory, self.world_from_ego)
         
         # Get the route that matches the trajectory.
         self.route = self.map.get_route(trajectory)
@@ -136,27 +144,25 @@ class EgoAgent(Agent):
 
     def __init__(self, map: CustomMapAPI, scene_index: int):
         super().__init__(map, scene_index)
+
         self.length: float = None
         self.width: float = None
         self.leader: VehicleAgent = None
+        self.time_to_collision: float = None
         self.traffic_light = None
-        self.world_from_ego = None
-        self.ego_from_world = None
 
     def update(self, data_batch: Dict[str, torch.Tensor], agents: Dict[int, VehicleAgent]):
-        self.update_transformation_matrices(data_batch)
+        super().update(data_batch)
+        
         self.update_position(data_batch)
         self.update_yaw(data_batch)
         self.update_extent(data_batch)
         self.update_velocity(data_batch)
         self.update_route(data_batch)
         self.update_leader(agents)
+        self.update_time_to_collision(agents)
         self.update_traffic_light(data_batch)
-    
-    def update_transformation_matrices(self, data_batch: Dict[str, torch.Tensor]):
-        self.world_from_ego = data_batch["world_from_agent"][self.scene_index].cpu().numpy()
-        self.ego_from_world = data_batch["agent_from_world"][self.scene_index].cpu().numpy()
-    
+
     def update_position(self, data_batch: Dict[str, torch.Tensor]):
         self.position = data_batch["centroid"][self.scene_index].cpu().numpy()
     
@@ -174,20 +180,23 @@ class EgoAgent(Agent):
         
         # Ensure the ego's historical positions are known (are available).
         if not all(availability):
-            self.velocity = None
             self.speed = data_batch['speed'][self.scene_index].cpu().numpy()
+            self.local_velocity = np.array([self.speed, 0.0])
+            self.velocity = np.dot(self.world_from_ego[:2, :2], self.local_velocity)
             return
         
-        # Get the previous position of the ego in the scene.
-        previous_local_position = data_batch["history_positions"][self.scene_index][1].cpu().numpy()
-        
-        # Transform the position to the world reference system.
-        previous_position = transform_point(previous_local_position, self.world_from_ego)
-        
-        # Calculate the ego's velocity.
+        # Get the simulator's time step size.
         timestep = 0.1
-        self.velocity = (self.position - previous_position) / timestep
         
+        # Get the previous local position of the ego in the scene.
+        previous_local_position = data_batch["history_positions"][self.scene_index][1].cpu().numpy()
+
+        # Calculate the ego's local velocity.
+        self.local_velocity = -previous_local_position / timestep
+
+        # Calculate the ego's velocity.
+        self.velocity = np.dot(self.world_from_ego[:2, :2], self.local_velocity)
+
         # Calculate the ego's speed.
         self.speed = np.linalg.norm(self.velocity)
         
@@ -212,6 +221,10 @@ class EgoAgent(Agent):
         
         # Get the route that matches the trajectory.
         self.route = self.map.get_route(trajectory)
+        
+        # Ensure there are at least two lanes (the current lane, and the next lane), otherwise extend the route.
+        if len(self.route) <= 1:
+            self.extend_route()
         
     def adjust_route(self):
         # Get the next lane's id.
@@ -271,6 +284,35 @@ class EgoAgent(Agent):
             
             if agent_distance_to_ego < leader_distance_to_ego:
                 self.leader = agent
+    
+    def update_time_to_collision(self, agents: Dict[int, VehicleAgent]):
+        self.time_to_collision = 99999
+        
+        for agent in agents.values():
+            
+            # Ensure the agent is in front of the ego, otherwise ignore this agent.
+            if agent.local_position[0] < 0:
+                continue
+            
+            # Calculate the time to collision to this agent from the ego in each direction by linearly extrapolating the 
+            # ego's and agent's position using their velocity.
+            time_to_collision = (agent.position - self.position) / (self.velocity - agent.velocity)
+            
+            # Ensure the time-to-collision in each direction is positive, otherwise ignore this agent.
+            if time_to_collision[0] < 0 or time_to_collision[1] < 0:
+                continue
+            
+            # Calculate the time difference between the time-to-collision of each direction.
+            time_difference = abs(time_to_collision[0] - time_to_collision[1])
+            
+            # Calculate the minimum time to collision.
+            min_time_to_collision = min(time_to_collision)
+            
+            # If the time difference between the directions is smaller than 0.5 seconds, the ego and agent are projected
+            # to collide in the future, with a margin of 0.5s between the time of collision in the x-direction and 
+            # y-direction.
+            if time_difference < 1.0 and min_time_to_collision < self.time_to_collision:
+                self.time_to_collision = min_time_to_collision
     
     def update_traffic_light(self, data_batch: Dict[str, torch.Tensor]):
         self.traffic_light = None

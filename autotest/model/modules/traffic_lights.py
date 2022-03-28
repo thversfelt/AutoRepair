@@ -13,7 +13,7 @@ class TrafficLights():
     DECELLERATION = -8.0 # [m/s^2]
 
     def process(self, scene: Scene) -> float:
-        if scene.ego.traffic_light == self.RED and scene.ego.speed > 0.0:
+        if scene.ego.traffic_light == self.RED and scene.ego.local_velocity[0] > 0:
             return self.DECELLERATION
         else:
             return self.ACCELERATION

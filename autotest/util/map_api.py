@@ -1,3 +1,4 @@
+import random
 import numpy as np
 
 from typing import List
@@ -119,26 +120,26 @@ class CustomMapAPI(MapAPI):
                 lane_id = visited_lanes_ids[lane_id]
             break
         
-        import matplotlib.pyplot as plt
-        plt.figure()
-        for visited_lane_id in visited_lanes_ids:
-            lane_polygon = self.get_lane_polygon(visited_lane_id)
-            xs, ys = zip(*lane_polygon) #create lists of x and y values
-            plt.plot(xs,ys, color='green')
-        for candidate_lane_id in candidate_lanes_ids:
-            lane_polygon = self.get_lane_polygon(candidate_lane_id)
-            xs, ys = zip(*lane_polygon) #create lists of x and y values
-            plt.plot(xs,ys, color='red')
-        # for lane_id in route:
-        #     lane_polygon = self.get_lane_polygon(lane_id)
+        # import matplotlib.pyplot as plt
+        # plt.figure()
+        # for visited_lane_id in visited_lanes_ids:
+        #     lane_polygon = self.get_lane_polygon(visited_lane_id)
         #     xs, ys = zip(*lane_polygon) #create lists of x and y values
-        #     plt.plot(xs,ys, color='blue')
-        for position in trajectory:
-            x = position[0]
-            y = position[1]
-            plt.scatter(x, y, color='black', s=1)
-        plt.axis('scaled')
-        plt.show()
+        #     plt.plot(xs,ys, color='green')
+        # for candidate_lane_id in candidate_lanes_ids:
+        #     lane_polygon = self.get_lane_polygon(candidate_lane_id)
+        #     xs, ys = zip(*lane_polygon) #create lists of x and y values
+        #     plt.plot(xs,ys, color='red')
+        # # for lane_id in route:
+        # #     lane_polygon = self.get_lane_polygon(lane_id)
+        # #     xs, ys = zip(*lane_polygon) #create lists of x and y values
+        # #     plt.plot(xs,ys, color='blue')
+        # for position in trajectory:
+        #     x = position[0]
+        #     y = position[1]
+        #     plt.scatter(x, y, color='black', s=1)
+        # plt.axis('scaled')
+        # plt.show()
         
         return route
     

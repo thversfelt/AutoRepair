@@ -23,13 +23,17 @@ class CollisionMetric(Metric):
         min_score = 0.0
         
         ego_bounding_box = _get_bounding_box(self.ego_predicted_position, self.ego_predicted_yaw, scene.ego.extent)
-        ego_area = scene.ego.length * scene.ego.width
         
-        for _, agent in scene.agents.items():
+        for agent in scene.agents.values():
             
             agent_bounding_box = _get_bounding_box(agent.position, agent.yaw, agent.extent)
             intersection = agent_bounding_box.intersection(ego_bounding_box)
-            score = -1.0 * intersection.area / ego_area
+            
+            if intersection.area == 0:
+                continue
+                
+            relative_speed = abs(scene.ego.speed - agent.speed)
+            score = -1.0 * relative_speed / (relative_speed + 1)
             
             if score < min_score:
                 min_score = score
@@ -44,6 +48,16 @@ class SafeDistanceMetric(Metric):
         super().process(scene, predicted_position, predicted_yaw)
         
         score = 0.0
+        
+        if scene.ego.leader is not None:
+            # Determine the braking distance https://en.wikipedia.org/wiki/Braking_distance
+            braking_distance = scene.ego.speed * 1.5 + scene.ego.speed**2 / (2 * 0.7 * 9.81)
+            
+            # Determine the distance between the ego and its leader.
+            leader_distance = np.linalg.norm(scene.ego.leader.local_position)
+            
+            # The score dips below zero as soon as the leader's distance is lower than the braking distance.
+            score = -1.0 * (1.0 - leader_distance / braking_distance)
         
         return np.clip(score, -1.0, 0.0)
     
