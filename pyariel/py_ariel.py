@@ -12,6 +12,8 @@ from pyariel import utilities, mutations
 class PyAriel:
     def run(self, rule_set: ast.Module, test_suite: AutoTest, scene_ids: List[int]) -> Dict[ast.Module, Dict]:
         results = self.evaluate(rule_set, test_suite, scene_ids)
+        print(results)
+        
         archive = self.update_archive({}, rule_set, results)
         
         while not self.solution_found(archive):
@@ -21,6 +23,7 @@ class PyAriel:
             mutant = self.generate_patch(parent, parent_results)
             print(ast.unparse(mutant))
             mutant_results = self.evaluate(mutant, test_suite, scene_ids)
+            print(mutant_results)
             
             archive = self.update_archive(archive, mutant, mutant_results)
 
