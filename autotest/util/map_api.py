@@ -1,7 +1,7 @@
 import random
 import numpy as np
 
-from typing import List
+from typing import List, Dict
 from l5kit.configs.config import load_metadata
 from l5kit.data import MapAPI, DataManager
 from l5kit.data.map_api import InterpolationMethod, ENCODING
@@ -20,6 +20,49 @@ class CustomMapAPI(MapAPI):
         self.lanes_ids = self.get_lanes_ids()
         self.segments_ids = self.get_segments_ids()
         self.junctions_ids = self.get_junctions_ids()
+        
+        #self.lanes_bounds = self.get_lanes_bounds()
+        #self.lanes_polygons = self.get_lanes_polygons()
+        
+        self.spatial_indexing()
+        
+        #self.bin_map()
+
+    def spatial_indexing(self):
+        import matplotlib.pyplot as plt
+        plt.figure()
+        
+        # https://rtree.readthedocs.io/en/latest/index.html
+        from rtree import index
+        spatial_index = index.Index()
+        
+        for lane_idx, lane_id in enumerate(self.lanes_ids):
+            lane_coords = self.get_lane_coords(lane_id)
+        
+            x_min = min(np.min(lane_coords["xyz_left"][:, 0]), np.min(lane_coords["xyz_right"][:, 0]))
+            y_min = min(np.min(lane_coords["xyz_left"][:, 1]), np.min(lane_coords["xyz_right"][:, 1]))
+            x_max = max(np.max(lane_coords["xyz_left"][:, 0]), np.max(lane_coords["xyz_right"][:, 0]))
+            y_max = max(np.max(lane_coords["xyz_left"][:, 1]), np.max(lane_coords["xyz_right"][:, 1]))
+            
+            spatial_index.insert(id=lane_idx, coordinates=(x_min, y_min, x_max, y_max), obj=lane_id)
+        
+            lane_polygon = self.get_lane_polygon(lane_id)
+            xs, ys = zip(*lane_polygon) #create lists of x and y values
+            plt.plot(xs,ys, color='green')
+
+        
+        for leaf in spatial_index.leaves():
+            x_min = leaf[2][0]
+            y_min = leaf[2][1]
+            x_max = leaf[2][2]
+            y_max = leaf[2][3]
+            
+            leaf_bounds = np.array([[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max], [x_min, y_min]])
+            xs, ys = zip(*leaf_bounds) #create lists of x and y values
+            plt.plot(xs,ys, color='red')
+            
+        plt.axis('scaled')
+        plt.show()
 
     def get_lanes_ids(self) -> List[str]:
         lanes_ids = []
