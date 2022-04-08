@@ -16,12 +16,14 @@ class Agent:
         
         self.world_from_ego = None
         self.ego_from_world = None
+        
         self.position: np.ndarray = None
         self.yaw: float = None
         self.extent: np.ndarray = None
         self.local_velocity: np.ndarray = None
         self.velocity: np.ndarray = None
         self.speed: float = None
+        
         self.route: Deque[str] = None
         
     def update(self, data_batch: Dict[str, torch.Tensor]):
@@ -134,7 +136,7 @@ class VehicleAgent(Agent):
         next_lane_id = self.route[1]
         
         # Check if the agent is in its next lane. 
-        in_next_lane = self.map.in_lane_bounds(self.position, next_lane_id)
+        in_next_lane = self.map.in_lane(self.position, next_lane_id)
         
         # The first lane of the route is not the current lane anymore, remove it.
         if in_next_lane:
@@ -147,6 +149,7 @@ class EgoAgent(Agent):
 
         self.length: float = None
         self.width: float = None
+        
         self.leader: VehicleAgent = None
         self.time_to_collision: float = None
         self.traffic_light = None
@@ -221,7 +224,7 @@ class EgoAgent(Agent):
         
         # Get the route that matches the trajectory.
         self.route = self.map.get_route(trajectory)
-        
+
         # Ensure there are at least two lanes (the current lane, and the next lane), otherwise extend the route.
         if len(self.route) <= 1:
             self.extend_route()
@@ -312,6 +315,7 @@ class EgoAgent(Agent):
             # to collide in the future, with a margin of 0.5s between the time of collision in the x-direction and 
             # y-direction.
             if time_difference < 1.0 and min_time_to_collision < self.time_to_collision:
+                self.collider_id = agent.id
                 self.time_to_collision = min_time_to_collision
     
     def update_traffic_light(self, data_batch: Dict[str, torch.Tensor]):
