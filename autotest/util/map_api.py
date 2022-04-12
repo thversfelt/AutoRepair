@@ -9,6 +9,8 @@ from l5kit.data.map_api import InterpolationMethod, ENCODING
 from l5kit.data.proto.road_network_pb2 import Lane, MapElement, RoadNetworkSegment, Junction
 from collections import deque
 
+from autotest.util.visualization import visualize_lanes_spatial_index
+
 
 class CustomMapAPI(MapAPI):
     def __init__(self, cfg: dict, dm: DataManager):
@@ -33,27 +35,6 @@ class CustomMapAPI(MapAPI):
             lanes_spatial_index.insert(id=lane_idx, coordinates=(x_min, y_min, x_max, y_max), obj=lane_id)
         
         return lanes_spatial_index
-        
-        # import matplotlib.pyplot as plt
-        # plt.figure()
-        
-        # for lane_idx, lane_id in enumerate(self.lanes_ids):
-        #     lane_polygon = self.get_lane_polygon(lane_id)
-        #     xs, ys = lane_polygon.exterior.coords.xy
-        #     plt.plot(xs,ys, color='green')
-
-        # for leaf in lanes_spatial_index.leaves():
-        #     x_min = leaf[2][0]
-        #     y_min = leaf[2][1]
-        #     x_max = leaf[2][2]
-        #     y_max = leaf[2][3]
-            
-        #     leaf_bounds = np.array([[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max], [x_min, y_min]])
-        #     xs, ys = zip(*leaf_bounds) #create lists of x and y values
-        #     plt.plot(xs,ys, color='red')
-            
-        # plt.axis('scaled')
-        # plt.show()
 
     def get_lanes_ids(self) -> List[str]:
         lanes_ids = []
@@ -141,36 +122,20 @@ class CustomMapAPI(MapAPI):
                         if connected_lane_id in candidate_lanes_ids: continue
                         candidate_lanes_ids[connected_lane_id] = lane_id
             else:
+                # A position is off-road when it is not in any of the candidate or visited lanes.
                 off_road = True
                 for visited_lane_id in visited_lanes_ids.keys():
                     if self.in_lane(position, visited_lane_id):
                         off_road = False
                 
+                # If the position is off-road, expand the set of candidate lanes. Note that off-road means that it is 
+                # not on any "known" lanes (candidate or visited), so add any potentially "unknown" lanes at this 
+                # position to the set of candidate lanes.
                 if off_road and last_visited_lane_id is not None:
                     current_lanes_ids = self.get_lanes_ids_at(position)
                     for current_lane_id in current_lanes_ids:
                         candidate_lanes_ids[current_lane_id] = last_visited_lane_id
-                    
-                    # import matplotlib.pyplot as plt
-                    # plt.figure()
-                    
-                    # for candidate_lane_id in candidate_lanes_ids:
-                    #     lane_polygon = self.get_lane_polygon(candidate_lane_id)
-                    #     xs, ys = lane_polygon.exterior.coords.xy
-                    #     plt.plot(xs,ys, color='red')
-                    # for visited_lane_id in visited_lanes_ids:
-                    #     lane_polygon = self.get_lane_polygon(visited_lane_id)
-                    #     xs, ys = lane_polygon.exterior.coords.xy
-                    #     plt.plot(xs,ys, color='green')
-                    # # for lane_id in route:
-                    # #     lane_polygon = self.get_lane_polygon(lane_id)
-                    # #     xs, ys = zip(*lane_polygon) #create lists of x and y values
-                    # #     plt.plot(xs,ys, color='blue')
-                    # plt.scatter(position[0], position[1], color='black', s=1)
-                    # plt.axis('scaled')
-                    # plt.show()
-                
-                
+
         # Backtrack the visited lanes, starting from the lanes at the final position, to obtain a feasible route.
         route = None
         for final_lane_id in final_lanes_ids:
@@ -185,27 +150,6 @@ class CustomMapAPI(MapAPI):
             break
         
         return route
-        
-        # import matplotlib.pyplot as plt
-        # plt.figure()
-        # for visited_lane_id in visited_lanes_ids:
-        #     lane_polygon = self.get_lane_polygon(visited_lane_id)
-        #     xs, ys = lane_polygon.exterior.coords.xy
-        #     plt.plot(xs,ys, color='green')
-        # for candidate_lane_id in candidate_lanes_ids:
-        #     lane_polygon = self.get_lane_polygon(candidate_lane_id)
-        #     xs, ys = lane_polygon.exterior.coords.xy
-        #     plt.plot(xs,ys, color='red')
-        # # for lane_id in route:
-        # #     lane_polygon = self.get_lane_polygon(lane_id)
-        # #     xs, ys = zip(*lane_polygon) #create lists of x and y values
-        # #     plt.plot(xs,ys, color='blue')
-        # for position in trajectory:
-        #     x = position[0]
-        #     y = position[1]
-        #     plt.scatter(x, y, color='black', s=1)
-        # plt.axis('scaled')
-        # plt.show()
 
     def get_lanes_ids_at(self, position: np.ndarray) -> List[str]:
         """Gets the lanes at the given position.
@@ -335,9 +279,21 @@ class CustomMapAPI(MapAPI):
             return False
 
     def id_as_int(self, id: str) -> np.int32:
-        id_bytes = id.encode(ENCODING)
+        # Add padding (whitespace) to ids with less than 4 charachters.
+        padded_id = id.ljust(4)
+        
+        # Encode the (padded) id to bytes.
+        id_bytes = padded_id.encode(ENCODING)
+        
+        # Convert the bytes to a 32-bit integer.
         return np.frombuffer(id_bytes, dtype=np.int32)
 
     def int_as_id(self, id: np.int32) -> str:
+        # Convert the 32-bit integer to bytes.
         id_bytes = np.frombuffer(id, dtype=np.int8).tobytes()
-        return id_bytes.decode(ENCODING)
+        
+        # Decode the (padded) id to a string.
+        padded_id = id_bytes.decode(ENCODING)
+        
+        # Remove any padding (whitespace) from the id.
+        return padded_id.strip()

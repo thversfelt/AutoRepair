@@ -11,7 +11,7 @@
             "env": {
                 "PYTHONPATH": "${workspaceRoot}"
             },
-            "justMyCode": true
+            "justMyCode": false
         },
         {
             "name": "Ariel Example",
@@ -23,7 +23,7 @@
             "env": {
                 "PYTHONPATH": "${workspaceRoot}"
             },
-            "justMyCode": true
+            "justMyCode": false
         }
     ]
 }

@@ -148,7 +148,7 @@ class PyAriel:
         
         statement = utilities.selection(suspiciousness)  # Select a random statement using RWS.
         path = random.choice([path for path in paths if statement in path])
-            
+        
         return path, statement
 
     def apply_mutation(self, rule_set: ast.Module, path_lines: List[int], statement_line: int):
