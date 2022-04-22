@@ -13,12 +13,10 @@ def modify(rule_set: ast.Module, path: List[ast.If], statement: ast.If):
     modification = random.choice(modifications)
     modification(statement.test)
 
-
 def change_threshold_value(condition: ast.Compare):
     threshold = condition.comparators[0]
     order_of_magnitude = utilities.order_of_magnitude(threshold.value)
     threshold.value = random.gauss(threshold.value, order_of_magnitude)
-
 
 def change_relational_direction(condition: ast.Compare):
     relational_operator = type(condition.ops[0])
@@ -32,7 +30,6 @@ def change_relational_direction(condition: ast.Compare):
     }
     new_relational_operator = inverse[relational_operator]
     condition.ops = [new_relational_operator]
-
 
 def change_arithmetic_operation(condition: ast.Compare):
     inverse = {
@@ -52,14 +49,10 @@ def change_arithmetic_operation(condition: ast.Compare):
         arithmetic_operation = type(binary_operation.op)
         binary_operation.op = inverse[arithmetic_operation]
 
-def change_boolean(condition: ast.Compare):
-    pass
-
 def shift(rule_set: ast.Module, path: List[ast.If], statement: ast.If):
     possible_other_statements = [other_statement for other_statement in path if other_statement is not statement]
     other_statement = random.choice(possible_other_statements)
     swap(rule_set, path, statement, other_statement)
-
 
 def swap(rule_set: ast.Module, path: List[ast.If], one_statement: ast.If, other_statement: ast.If):
     other_predecessor_index = path.index(other_statement) - 1

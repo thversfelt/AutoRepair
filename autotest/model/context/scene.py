@@ -26,9 +26,11 @@ class Scene:
         self.ego.update(data_batch, self.agents)
     
     def update_agents(self, data_batch: Dict[str, torch.Tensor]):
-        # Update the agents.
-        agents_ids = data_batch["all_other_agents_track_ids"][self.index].cpu().numpy()
-        for agent_index, agent_id in enumerate(agents_ids):
+        # Get the agent ids of the agents that are updated in this frame (data batch).
+        updated_agents_ids = data_batch["all_other_agents_track_ids"][self.index].cpu().numpy()
+        
+        # Update these agents.
+        for agent_index, agent_id in enumerate(updated_agents_ids):
             # Ensure the agent has a valid id (an id of 0 is invalid).
             if agent_id == 0:
                 continue
@@ -39,4 +41,9 @@ class Scene:
             
             agent = self.agents[agent_id]
             agent.update(data_batch, agent_index)
-        
+            
+        # Remove the agents that were in a previous frame, but not in this frame anymore (outdated).
+        all_agents_ids = list(self.agents.keys())
+        outdated_agents_ids = list(set(all_agents_ids) - set(updated_agents_ids))
+        for agent_id in outdated_agents_ids:
+            del self.agents[agent_id]
