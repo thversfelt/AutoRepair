@@ -152,7 +152,7 @@ class PyAriel:
         return path, statement
 
     def apply_mutation(self, rule_set: ast.Module, path_lines: List[int], statement_line: int):
-        path, statement = utilities.find_references(rule_set, path_lines, statement_line)
+        path, statement = utilities.find_path_references(rule_set, path_lines, statement_line)
 
         if len(path) == 1:
             mutate = mutations.modify

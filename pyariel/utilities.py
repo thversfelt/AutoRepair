@@ -4,7 +4,6 @@ import random
 
 from typing import Dict, List, Tuple, Any
 
-
 def selection(population: Dict[int, float]) -> int:
     """Roulette Wheel Selection"""
     total_value = sum(population.values())
@@ -14,7 +13,6 @@ def selection(population: Dict[int, float]) -> int:
         current_value += value
         if current_value >= selection_value:
             return key
-
 
 def dominates(one: List[float], other: List[float]) -> bool:
     for i in range(len(one)):
@@ -27,15 +25,13 @@ def dominates(one: List[float], other: List[float]) -> bool:
 
     return False  # The other does not dominate one, and one does not dominate any objective of the other.
 
-
 def order_of_magnitude(number: float) -> int:
     if number == 0:
         return 10
     else:
         return math.floor(math.log(abs(number), 10))
 
-
-def find_references(rule_set: ast.Module, path_lines: List[int], statement_line: int) -> Tuple[List[ast.If], ast.If]:
+def find_path_references(rule_set: ast.Module, path_lines: List[int], statement_line: int) -> Tuple[List[ast.If], ast.If]:
     class ReferencesFinder(ast.NodeVisitor):
         def __init__(self):
             self.path = dict.fromkeys(path_lines, None)
@@ -51,3 +47,14 @@ def find_references(rule_set: ast.Module, path_lines: List[int], statement_line:
     path = list(finder.path.values())
     statement = finder.path[statement_line]
     return path, statement
+
+def find_function_definition_reference(rule_set: ast.Module) -> ast.FunctionDef:
+    class ReferenceFinder(ast.NodeVisitor):
+        def visit_FunctionDef(self, node: ast.FunctionDef) -> Any:
+            self.function_definition = node
+            self.generic_visit(node)
+        
+    finder = ReferenceFinder()
+    finder.visit(rule_set)
+    return finder.function_definition
+    

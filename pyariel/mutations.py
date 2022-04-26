@@ -55,32 +55,40 @@ def shift(rule_set: ast.Module, path: List[ast.If], statement: ast.If):
     swap(rule_set, path, statement, other_statement)
 
 def swap(rule_set: ast.Module, path: List[ast.If], one_statement: ast.If, other_statement: ast.If):
+    # Find the function defition reference in the rule set.
+    function_definition = utilities.find_function_definition_reference(rule_set)
+    
+    # Find the predecessors and successors of the one statement.
+    one_predecessor_index = path.index(one_statement) - 1
+    one_predecessor = None if one_predecessor_index == -1 else path[one_predecessor_index]
+    one_successors = one_statement.orelse
+    
+    # Find the predecessors and successors of the other statement.
     other_predecessor_index = path.index(other_statement) - 1
     other_predecessor = None if other_predecessor_index == -1 else path[other_predecessor_index]
     other_successors = other_statement.orelse
 
-    one_predecessor_index = path.index(one_statement) - 1
-    one_predecessor = None if one_predecessor_index == -1 else path[one_predecessor_index]
-    one_successors = one_statement.orelse
-
     if other_predecessor is None:
-        function_definition = rule_set.body[0]
-        function_definition.body = [one_statement]
+        # The other statement has no predecessors, so to swap one and the other, make the one statement the root.
+        function_definition.body[1] = one_statement
     else:
         other_predecessor.orelse = [one_statement]
 
     if one_predecessor is None:
-        function_definition = rule_set.body[0]
-        function_definition.body = [other_statement]
+        # The one statement has no predecessors, so to swap one and the other, make the other statement the root.
+        function_definition.body[1] = other_statement
     else:
         one_predecessor.orelse = [other_statement]
 
     if one_predecessor == other_statement:
+        # The other statement is the one's predecessor.
         one_statement.orelse = [other_statement]
         other_statement.orelse = one_successors
     elif other_predecessor == one_statement:
+        # The one statement is the other's predecessor.
         other_statement.orelse = [one_statement]
         one_statement.orelse = other_successors
     else:
+        # The statements are not predecessors of each other.
         one_statement.orelse = other_successors
         other_statement.orelse = one_successors
