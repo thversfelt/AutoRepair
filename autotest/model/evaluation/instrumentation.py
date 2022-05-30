@@ -85,7 +85,7 @@ class Instrumenter(ast.NodeTransformer):
                     ctx=ast.Load()
                 ),
                 args=[ast.Constant(
-                    value=node.lineno, 
+                    value=ast.unparse(node.test), 
                     kind=None
                 )],
                 keywords=[]

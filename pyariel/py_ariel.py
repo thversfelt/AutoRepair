@@ -158,9 +158,10 @@ class PyAriel:
             mutate = mutations.modify
         else:
             mutate = random.choice([
-                mutations.modify,
+                #mutations.modify,
                 mutations.shift
             ])
 
         mutate(rule_set, path, statement)
+        print(ast.unparse(rule_set))
         ast.fix_missing_locations(rule_set)

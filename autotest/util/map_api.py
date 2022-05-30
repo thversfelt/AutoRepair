@@ -2,14 +2,12 @@ import numpy as np
 
 from rtree import index
 from shapely.geometry import box, Polygon, Point
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 from l5kit.configs.config import load_metadata
 from l5kit.data import MapAPI, DataManager
 from l5kit.data.map_api import InterpolationMethod, ENCODING
 from l5kit.data.proto.road_network_pb2 import Lane, MapElement, RoadNetworkSegment, Junction
 from collections import deque
-
-from autotest.util.visualization import visualize_lanes_spatial_index
 
 
 class CustomMapAPI(MapAPI):

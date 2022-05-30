@@ -2,10 +2,11 @@
     "python.testing.unittestArgs": [
         "-v",
         "-s",
-        "./pyariel/tests",
+        "./autotest/tests",
         "-p",
         "test_*.py"
     ],
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true
+    
 }

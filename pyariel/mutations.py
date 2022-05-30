@@ -1,5 +1,6 @@
 import ast
 import random
+
 from typing import List
 from pyariel import utilities
 
@@ -11,7 +12,8 @@ def modify(rule_set: ast.Module, path: List[ast.If], statement: ast.If):
         change_arithmetic_operation
     ]
     modification = random.choice(modifications)
-    modification(statement.test)
+    condition = statement.test
+    modification(condition)
 
 def change_threshold_value(condition: ast.Compare):
     threshold = condition.comparators[0]
