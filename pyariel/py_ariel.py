@@ -76,15 +76,22 @@ class PyAriel:
     def generate_patch(self, rule_set: ast.Module, results: Dict) -> ast.Module:
         mutant = copy.deepcopy(rule_set)
         path, statement = self.fault_localization(rule_set, results)
+        path_references, statement_reference = utilities.find_statements_references(rule_set, path, statement)
+
         counter = 0
         p = random.uniform(0, 1)
         while p <= pow(0.5, counter):
-            self.apply_mutation(mutant, path, statement)
+            self.apply_mutation(mutant, path_references, statement_reference)
             counter += 1
             p = random.uniform(0, 1)
+            
+        # TODO: when finding references, the references might not be found because the statements may have been mutated,
+        # thus rendering the executed_statements list invalid. The mutated executed statements should replace the
+        # initial executed statements (as strings).
+        
         return mutant
 
-    def fault_localization(self, rule_set: ast.Module, results: Dict) -> Tuple[List[int], int]:
+    def fault_localization(self, rule_set: ast.Module, results: Dict) -> Tuple[List[str], str]:
         
         paths = []  # Records the executed path of each test case (scene).
         violation = {}  # Records the violation severity of each test case.
@@ -151,15 +158,13 @@ class PyAriel:
         
         return path, statement
 
-    def apply_mutation(self, rule_set: ast.Module, path_lines: List[int], statement_line: int):
-        path, statement = utilities.find_path_references(rule_set, path_lines, statement_line)
-
+    def apply_mutation(self, rule_set: ast.Module, path: List[ast.If], statement: ast.If):
         if len(path) == 1:
             mutate = mutations.modify
         else:
             mutate = random.choice([
-                #mutations.modify,
-                mutations.shift
+                mutations.modify#,
+                #mutations.shift
             ])
 
         mutate(rule_set, path, statement)

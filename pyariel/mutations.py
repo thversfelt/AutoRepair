@@ -16,9 +16,12 @@ def modify(rule_set: ast.Module, path: List[ast.If], statement: ast.If):
     modification(condition)
 
 def change_threshold_value(condition: ast.Compare):
-    threshold = condition.comparators[0]
-    order_of_magnitude = utilities.order_of_magnitude(threshold.value)
-    threshold.value = random.gauss(threshold.value, order_of_magnitude)
+    numbers = utilities.find_numbers_references(condition)
+    
+    if len(numbers) > 0:
+        number = random.choice(numbers)
+        order_of_magnitude = utilities.order_of_magnitude(number.value)
+        number.value = random.gauss(number.value, order_of_magnitude)
 
 def change_relational_direction(condition: ast.Compare):
     relational_operator = type(condition.ops[0])

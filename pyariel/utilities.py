@@ -31,25 +31,31 @@ def order_of_magnitude(number: float) -> int:
     else:
         return math.floor(math.log(abs(number), 10))
 
-def find_path_references(rule_set: ast.Module, path_lines: List[int], statement_line: int) -> Tuple[List[ast.If], ast.If]:
+def find_statements_references(rule_set: ast.Module, path: List[str], statement: str) -> Tuple[List[ast.If], ast.If]:
     class ReferencesFinder(ast.NodeVisitor):
         def __init__(self):
-            self.path = dict.fromkeys(path_lines, None)
+            self.path = []
+            self.statement = None
             super().__init__()
 
         def visit_If(self, node: ast.If) -> Any:
-            if node.lineno in self.path.keys():
-                self.path[node.lineno] = node
+            condition = ast.unparse(node.test)
+            if condition == statement:
+                self.statement = node
+            if condition in path:
+                self.path.append(node)
             self.generic_visit(node)
 
     finder = ReferencesFinder()
     finder.visit(rule_set)
-    path = list(finder.path.values())
-    statement = finder.path[statement_line]
-    return path, statement
+    return finder.path, finder.statement
 
 def find_function_definition_reference(rule_set: ast.Module) -> ast.FunctionDef:
     class ReferenceFinder(ast.NodeVisitor):
+        def __init__(self):
+            self.function_definition = None
+            super().__init__()
+        
         def visit_FunctionDef(self, node: ast.FunctionDef) -> Any:
             self.function_definition = node
             self.generic_visit(node)
@@ -58,3 +64,30 @@ def find_function_definition_reference(rule_set: ast.Module) -> ast.FunctionDef:
     finder.visit(rule_set)
     return finder.function_definition
     
+def find_arithmetic_operations_references(condition: ast.Compare) -> List[ast.BinOp]:
+    class ReferenceFinder(ast.NodeVisitor):
+        def __init__(self):
+            self.operations = []
+            super().__init__()
+        
+        def visit_BinOp(self, node: ast.BinOp) -> Any:
+            self.operations.append(node)
+            self.generic_visit(node)
+        
+    finder = ReferenceFinder()
+    finder.visit(condition)
+    return finder.operations
+
+def find_numbers_references(condition: ast.Compare) -> List[ast.Num]:
+    class ReferenceFinder(ast.NodeVisitor):
+        def __init__(self):
+            self.numbers = []
+            super().__init__()
+        
+        def visit_Num(self, node: ast.Num) -> Any:
+            self.numbers.append(node)
+            self.generic_visit(node)
+        
+    finder = ReferenceFinder()
+    finder.visit(condition)
+    return finder.numbers
