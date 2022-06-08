@@ -1,19 +1,33 @@
 import ast
 import random
 
-from typing import List
+from typing import Dict, List
 from pyariel import utilities
 
 
-def modify(rule_set: ast.Module, path: List[ast.If], statement: ast.If):
+def modify(rule_set: ast.Module, statement: str, references: Dict):
     modifications = [
         change_threshold_value,
         change_relational_direction,
         change_arithmetic_operation
     ]
     modification = random.choice(modifications)
-    condition = statement.test
-    modification(condition)
+    
+    # Obtain the statement reference from the references dictionary.
+    statement_reference = references[statement]
+    
+    # Obtain the statement's condition.
+    statement_condition = statement_reference.test
+    
+    # Mutate the condition.
+    modification(statement_condition)
+    
+    # Replace the unmodified statement with the mutated statement as string key in the references dictionary.
+    mutated_statement = ast.unparse(statement_reference.test)
+    references[mutated_statement] = references.pop(statement)
+    
+    # Return the mutated statement.
+    return mutated_statement
 
 def change_threshold_value(condition: ast.Compare):
     numbers = utilities.find_numbers_references(condition)

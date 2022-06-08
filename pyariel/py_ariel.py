@@ -1,7 +1,6 @@
 import ast
 import copy
 import random
-import astor
 import numpy as np
 
 from typing import List, Tuple, Dict
@@ -73,15 +72,16 @@ class PyAriel:
         return False
             
 
-    def generate_patch(self, rule_set: ast.Module, results: Dict) -> ast.Module:
-        mutant = copy.deepcopy(rule_set)
-        path, statement = self.fault_localization(rule_set, results)
-        path_references, statement_reference = utilities.find_statements_references(rule_set, path, statement)
+    def generate_patch(self, parent: ast.Module, parent_results: Dict) -> ast.Module:
+        mutant = copy.deepcopy(parent)
+        
+        path, statement = self.fault_localization(mutant, parent_results)
+        references = utilities.find_statements_references(mutant, path)
 
         counter = 0
         p = random.uniform(0, 1)
         while p <= pow(0.5, counter):
-            self.apply_mutation(mutant, path_references, statement_reference)
+            statement = self.apply_mutation(mutant, statement, references)
             counter += 1
             p = random.uniform(0, 1)
             
@@ -142,6 +142,7 @@ class PyAriel:
             
             for scene_id, scene_results in results.items():
                 
+                # The statement is executed in this test case, if it is in the executed statements list.
                 total_violation += violation[scene_id]
                 path = scene_results["executed_statements"]
                 covered = statement in path
@@ -149,17 +150,23 @@ class PyAriel:
                 if covered:
                     total_covered_violation += violation[scene_id]
             
-            failed_ratio = failed[statement] / total_failed if total_failed > 0 else 0  # Prevent division by 0 error.
-            passed_ratio = passed[statement] / total_passed if total_passed > 0 else 1  # Prevent division by 0 error.
+            # Prevent division by 0 error, if there are no violations.
+            failed_ratio = failed[statement] / total_failed if total_failed > 0 else 0
+            
+            # Prevent division by 0 error, if no test case passed.
+            passed_ratio = passed[statement] / total_passed if total_passed > 0 else 1  
             suspiciousness[statement] = (total_covered_violation / total_violation) / (passed_ratio + failed_ratio)
         
-        statement = utilities.selection(suspiciousness)  # Select a random statement using RWS.
+        # Select a statement using roulette wheel selection, to mutate it.
+        statement = utilities.selection(suspiciousness)
+        
+        # Select a random path from the list of all recorded paths.
         path = random.choice([path for path in paths if statement in path])
         
         return path, statement
 
-    def apply_mutation(self, rule_set: ast.Module, path: List[ast.If], statement: ast.If):
-        if len(path) == 1:
+    def apply_mutation(self, rule_set: ast.Module, statement: str, references: Dict):
+        if len(references) == 1:
             mutate = mutations.modify
         else:
             mutate = random.choice([
@@ -167,6 +174,7 @@ class PyAriel:
                 #mutations.shift
             ])
 
-        mutate(rule_set, path, statement)
-        print(ast.unparse(rule_set))
+        statement = mutate(rule_set, statement, references)
         ast.fix_missing_locations(rule_set)
+        print(ast.unparse(rule_set))
+        return statement

@@ -31,24 +31,21 @@ def order_of_magnitude(number: float) -> int:
     else:
         return math.floor(math.log(abs(number), 10))
 
-def find_statements_references(rule_set: ast.Module, path: List[str], statement: str) -> Tuple[List[ast.If], ast.If]:
+def find_statements_references(rule_set: ast.Module, path: List[str]) -> Tuple[List[ast.If], ast.If]:
     class ReferencesFinder(ast.NodeVisitor):
         def __init__(self):
-            self.path = []
-            self.statement = None
+            self.references = {}
             super().__init__()
 
         def visit_If(self, node: ast.If) -> Any:
             condition = ast.unparse(node.test)
-            if condition == statement:
-                self.statement = node
             if condition in path:
-                self.path.append(node)
+                self.references[condition] = node
             self.generic_visit(node)
 
     finder = ReferencesFinder()
     finder.visit(rule_set)
-    return finder.path, finder.statement
+    return finder.references
 
 def find_function_definition_reference(rule_set: ast.Module) -> ast.FunctionDef:
     class ReferenceFinder(ast.NodeVisitor):
