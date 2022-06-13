@@ -35,7 +35,7 @@ def change_threshold_value(condition: ast.Compare):
     if len(numbers) > 0:
         number = random.choice(numbers)
         order_of_magnitude = utilities.order_of_magnitude(number.value)
-        number.value = random.gauss(number.value, order_of_magnitude)
+        number.value = random.gauss(number.value, 10**order_of_magnitude)
 
 def change_relational_direction(condition: ast.Compare):
     relational_operator = type(condition.ops[0])
@@ -68,46 +68,48 @@ def change_arithmetic_operation(condition: ast.Compare):
         arithmetic_operation = type(binary_operation.op)
         binary_operation.op = inverse[arithmetic_operation]
 
-def shift(rule_set: ast.Module, path: List[ast.If], statement: ast.If):
-    possible_other_statements = [other_statement for other_statement in path if other_statement is not statement]
+def shift(rule_set: ast.Module, statement: str, references: Dict):
+    possible_other_statements = [other_statement for other_statement in references if other_statement != statement]
     other_statement = random.choice(possible_other_statements)
-    swap(rule_set, path, statement, other_statement)
+    swap(rule_set, statement, other_statement, references)
+    return statement
 
-def swap(rule_set: ast.Module, path: List[ast.If], one_statement: ast.If, other_statement: ast.If):
+def swap(rule_set: ast.Module, one_statement: str, other_statement: str, references: Dict):
     # Find the function defition reference in the rule set.
     function_definition = utilities.find_function_definition_reference(rule_set)
     
-    # Find the predecessors and successors of the one statement.
-    one_predecessor_index = path.index(one_statement) - 1
-    one_predecessor = None if one_predecessor_index == -1 else path[one_predecessor_index]
-    one_successors = one_statement.orelse
+    # Find the predecessors and successors of both statements.
+    one_statement_reference = references[one_statement]
+    one_predecessor_reference = utilities.find_statement_predecessor(rule_set, one_statement_reference)
+    one_successors_reference = one_statement_reference.orelse
     
-    # Find the predecessors and successors of the other statement.
-    other_predecessor_index = path.index(other_statement) - 1
-    other_predecessor = None if other_predecessor_index == -1 else path[other_predecessor_index]
-    other_successors = other_statement.orelse
+    other_statement_reference = references[other_statement]
+    other_predecessor_reference = utilities.find_statement_predecessor(rule_set, other_statement_reference)
+    other_successors_reference = other_statement_reference.orelse
 
-    if other_predecessor is None:
-        # The other statement has no predecessors, so to swap one and the other, make the one statement the root.
-        function_definition.body[1] = one_statement
+    if other_predecessor_reference is None:
+        # The other statement has no predecessors (it is the root), so to swap one and the other, make the one 
+        # statement the root.
+        function_definition.body[1] = one_statement_reference
     else:
-        other_predecessor.orelse = [one_statement]
+        other_predecessor_reference.orelse = [one_statement_reference]
 
-    if one_predecessor is None:
-        # The one statement has no predecessors, so to swap one and the other, make the other statement the root.
-        function_definition.body[1] = other_statement
+    if one_predecessor_reference is None:
+        # The one statement has no predecessors (it is the root), so to swap one and the other, make the other 
+        # statement the root.
+        function_definition.body[1] = other_statement_reference
     else:
-        one_predecessor.orelse = [other_statement]
+        one_predecessor_reference.orelse = [other_statement_reference]
 
-    if one_predecessor == other_statement:
+    if one_predecessor_reference == other_statement_reference:
         # The other statement is the one's predecessor.
-        one_statement.orelse = [other_statement]
-        other_statement.orelse = one_successors
-    elif other_predecessor == one_statement:
+        one_statement_reference.orelse = [other_statement_reference]
+        other_statement_reference.orelse = one_successors_reference
+    elif other_predecessor_reference == one_statement_reference:
         # The one statement is the other's predecessor.
-        other_statement.orelse = [one_statement]
-        one_statement.orelse = other_successors
+        other_statement_reference.orelse = [one_statement_reference]
+        one_statement_reference.orelse = other_successors_reference
     else:
         # The statements are not predecessors of each other.
-        one_statement.orelse = other_successors
-        other_statement.orelse = one_successors
+        one_statement_reference.orelse = other_successors_reference
+        other_statement_reference.orelse = one_successors_reference

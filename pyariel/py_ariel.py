@@ -10,10 +10,14 @@ from pyariel import utilities, mutations
 
 class PyAriel:
     def run(self, rule_set: ast.Module, test_suite: AutoTest, scene_ids: List[int]) -> Dict[ast.Module, Dict]:
+        print(ast.unparse(rule_set))
         results = self.evaluate(rule_set, test_suite, scene_ids)
         print(results)
         
+        violations = []
         archive = self.update_archive({}, rule_set, results)
+        front = utilities.get_pareto_front(archive)
+        violations.append(min(map(min, front)))
         
         while not self.solution_found(archive):
             parent = self.select_parent(archive)
@@ -25,7 +29,18 @@ class PyAriel:
             print(mutant_results)
             
             archive = self.update_archive(archive, mutant, mutant_results)
+            front = utilities.get_pareto_front(archive)
+            violations.append(min(map(min, front)))
 
+        import matplotlib.pyplot as plt
+   
+        generations = list(range(len(violations)))
+        plt.plot(generations, violations)
+        plt.title('Worst violation per generation')
+        plt.xlabel('Generation')
+        plt.ylabel('Violation')
+        plt.show()
+        
         return archive
 
     def evaluate(self, rule_set: ast.Module, test_suite: AutoTest, scene_ids: List[int]) -> Dict[ast.Module, Dict]:
@@ -61,17 +76,6 @@ class PyAriel:
 
         return archive
 
-    def solution_found(self, archive: Dict[ast.Module, Dict]) -> bool:
-        for results in archive.values():
-            metrics_scores = [scene_results["metrics_scores"] for scene_results in results.values()]
-            min_metrics_scores = np.minimum.reduce(metrics_scores)
-            min_metric_score = min(min_metrics_scores)
-            
-            if min_metric_score == 0:
-                return True
-        return False
-            
-
     def generate_patch(self, parent: ast.Module, parent_results: Dict) -> ast.Module:
         mutant = copy.deepcopy(parent)
         
@@ -84,11 +88,7 @@ class PyAriel:
             statement = self.apply_mutation(mutant, statement, references)
             counter += 1
             p = random.uniform(0, 1)
-            
-        # TODO: when finding references, the references might not be found because the statements may have been mutated,
-        # thus rendering the executed_statements list invalid. The mutated executed statements should replace the
-        # initial executed statements (as strings).
-        
+
         return mutant
 
     def fault_localization(self, rule_set: ast.Module, results: Dict) -> Tuple[List[str], str]:
@@ -170,11 +170,20 @@ class PyAriel:
             mutate = mutations.modify
         else:
             mutate = random.choice([
-                mutations.modify#,
-                #mutations.shift
+                mutations.modify,
+                mutations.shift
             ])
 
         statement = mutate(rule_set, statement, references)
         ast.fix_missing_locations(rule_set)
-        print(ast.unparse(rule_set))
         return statement
+
+    def solution_found(self, archive: Dict[ast.Module, Dict]) -> bool:
+        for results in archive.values():
+            metrics_scores = [scene_results["metrics_scores"] for scene_results in results.values()]
+            min_metrics_scores = np.minimum.reduce(metrics_scores)
+            min_metric_score = min(min_metrics_scores)
+            
+            if min_metric_score == 0:
+                return True
+        return False
