@@ -1,7 +1,6 @@
 import ast
 import copy
 import random
-import astor
 import numpy as np
 
 from typing import List, Tuple, Dict
@@ -11,10 +10,14 @@ from pyariel import utilities, mutations
 
 class PyAriel:
     def run(self, rule_set: ast.Module, test_suite: AutoTest, scene_ids: List[int]) -> Dict[ast.Module, Dict]:
+        print(ast.unparse(rule_set))
         results = self.evaluate(rule_set, test_suite, scene_ids)
         print(results)
         
+        violations = []
         archive = self.update_archive({}, rule_set, results)
+        front = utilities.get_pareto_front(archive)
+        violations.append(min(map(min, front)))
         
         while not self.solution_found(archive):
             parent = self.select_parent(archive)
@@ -26,7 +29,18 @@ class PyAriel:
             print(mutant_results)
             
             archive = self.update_archive(archive, mutant, mutant_results)
+            front = utilities.get_pareto_front(archive)
+            violations.append(min(map(min, front)))
 
+        import matplotlib.pyplot as plt
+   
+        generations = list(range(len(violations)))
+        plt.plot(generations, violations)
+        plt.title('Worst violation per generation')
+        plt.xlabel('Generation')
+        plt.ylabel('Violation')
+        plt.show()
+        
         return archive
 
     def evaluate(self, rule_set: ast.Module, test_suite: AutoTest, scene_ids: List[int]) -> Dict[ast.Module, Dict]:
@@ -62,29 +76,22 @@ class PyAriel:
 
         return archive
 
-    def solution_found(self, archive: Dict[ast.Module, Dict]) -> bool:
-        for results in archive.values():
-            metrics_scores = [scene_results["metrics_scores"] for scene_results in results.values()]
-            min_metrics_scores = np.minimum.reduce(metrics_scores)
-            min_metric_score = min(min_metrics_scores)
-            
-            if min_metric_score == 0:
-                return True
-        return False
-            
+    def generate_patch(self, parent: ast.Module, parent_results: Dict) -> ast.Module:
+        mutant = copy.deepcopy(parent)
+        
+        path, statement = self.fault_localization(mutant, parent_results)
+        references = utilities.find_statements_references(mutant, path)
 
-    def generate_patch(self, rule_set: ast.Module, results: Dict) -> ast.Module:
-        mutant = copy.deepcopy(rule_set)
-        path, statement = self.fault_localization(rule_set, results)
         counter = 0
         p = random.uniform(0, 1)
         while p <= pow(0.5, counter):
-            self.apply_mutation(mutant, path, statement)
+            statement = self.apply_mutation(mutant, statement, references)
             counter += 1
             p = random.uniform(0, 1)
+
         return mutant
 
-    def fault_localization(self, rule_set: ast.Module, results: Dict) -> Tuple[List[int], int]:
+    def fault_localization(self, rule_set: ast.Module, results: Dict) -> Tuple[List[str], str]:
         
         paths = []  # Records the executed path of each test case (scene).
         violation = {}  # Records the violation severity of each test case.
@@ -135,6 +142,7 @@ class PyAriel:
             
             for scene_id, scene_results in results.items():
                 
+                # The statement is executed in this test case, if it is in the executed statements list.
                 total_violation += violation[scene_id]
                 path = scene_results["executed_statements"]
                 covered = statement in path
@@ -142,19 +150,23 @@ class PyAriel:
                 if covered:
                     total_covered_violation += violation[scene_id]
             
-            failed_ratio = failed[statement] / total_failed if total_failed > 0 else 0  # Prevent division by 0 error.
-            passed_ratio = passed[statement] / total_passed if total_passed > 0 else 1  # Prevent division by 0 error.
+            # Prevent division by 0 error, if there are no violations.
+            failed_ratio = failed[statement] / total_failed if total_failed > 0 else 0
+            
+            # Prevent division by 0 error, if no test case passed.
+            passed_ratio = passed[statement] / total_passed if total_passed > 0 else 1  
             suspiciousness[statement] = (total_covered_violation / total_violation) / (passed_ratio + failed_ratio)
         
-        statement = utilities.selection(suspiciousness)  # Select a random statement using RWS.
+        # Select a statement using roulette wheel selection, to mutate it.
+        statement = utilities.selection(suspiciousness)
+        
+        # Select a random path from the list of all recorded paths.
         path = random.choice([path for path in paths if statement in path])
-            
+        
         return path, statement
 
-    def apply_mutation(self, rule_set: ast.Module, path_lines: List[int], statement_line: int):
-        path, statement = utilities.find_references(rule_set, path_lines, statement_line)
-
-        if len(path) == 1:
+    def apply_mutation(self, rule_set: ast.Module, statement: str, references: Dict):
+        if len(references) == 1:
             mutate = mutations.modify
         else:
             mutate = random.choice([
@@ -162,5 +174,16 @@ class PyAriel:
                 mutations.shift
             ])
 
-        mutate(rule_set, path, statement)
+        statement = mutate(rule_set, statement, references)
         ast.fix_missing_locations(rule_set)
+        return statement
+
+    def solution_found(self, archive: Dict[ast.Module, Dict]) -> bool:
+        for results in archive.values():
+            metrics_scores = [scene_results["metrics_scores"] for scene_results in results.values()]
+            min_metrics_scores = np.minimum.reduce(metrics_scores)
+            min_metric_score = min(min_metrics_scores)
+            
+            if min_metric_score == 0:
+                return True
+        return False

@@ -82,10 +82,7 @@ class CustomVectorizer(Vectorizer):
 
         # get agents around AoI sorted by distance in a given radius. Give priority to agents in the current time step
         history_agents_flat = filter_agents_by_labels(np.concatenate(history_agents))
-        history_agents_flat = filter_agents_by_distance(history_agents_flat, agent_centroid_m, self.max_agents_distance)
-
         cur_agents = filter_agents_by_labels(history_agents[0])
-        cur_agents = filter_agents_by_distance(cur_agents, agent_centroid_m, self.max_agents_distance)
 
         list_agents_to_take = get_other_agents_ids(
             history_agents_flat["track_id"], cur_agents["track_id"], selected_track_id, self.other_agents_num

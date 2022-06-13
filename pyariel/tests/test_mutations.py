@@ -32,8 +32,8 @@ class TestMutations(unittest.TestCase):
         one_statement_line = 8
         other_statement_line = 5
 
-        path, one_statement = utilities.find_references(actual_rule_set, path_lines, one_statement_line)
-        path, other_statement = utilities.find_references(actual_rule_set, path_lines, other_statement_line)
+        path, one_statement = utilities.find_statements_references(actual_rule_set, path_lines, one_statement_line)
+        path, other_statement = utilities.find_statements_references(actual_rule_set, path_lines, other_statement_line)
         mutations.swap(actual_rule_set, path, one_statement, other_statement)
         ast.fix_missing_locations(actual_rule_set)
 
@@ -89,8 +89,8 @@ class TestMutations(unittest.TestCase):
         one_statement_line = 11
         other_statement_line = 2
 
-        path, one_statement = utilities.find_references(actual_rule_set, path_lines, one_statement_line)
-        path, other_statement = utilities.find_references(actual_rule_set, path_lines, other_statement_line)
+        path, one_statement = utilities.find_statements_references(actual_rule_set, path_lines, one_statement_line)
+        path, other_statement = utilities.find_statements_references(actual_rule_set, path_lines, other_statement_line)
         mutations.swap(actual_rule_set, path, one_statement, other_statement)
         ast.fix_missing_locations(actual_rule_set)
 
@@ -146,8 +146,8 @@ class TestMutations(unittest.TestCase):
         one_statement_line = 5
         other_statement_line = 8
 
-        path, one_statement = utilities.find_references(actual_rule_set, path_lines, one_statement_line)
-        path, other_statement = utilities.find_references(actual_rule_set, path_lines, other_statement_line)
+        path, one_statement = utilities.find_statements_references(actual_rule_set, path_lines, one_statement_line)
+        path, other_statement = utilities.find_statements_references(actual_rule_set, path_lines, other_statement_line)
         mutations.swap(actual_rule_set, path, one_statement, other_statement)
         ast.fix_missing_locations(actual_rule_set)
 
@@ -203,8 +203,8 @@ class TestMutations(unittest.TestCase):
         one_statement_line = 5
         other_statement_line = 11
 
-        path, one_statement = utilities.find_references(actual_rule_set, path_lines, one_statement_line)
-        path, other_statement = utilities.find_references(actual_rule_set, path_lines, other_statement_line)
+        path, one_statement = utilities.find_statements_references(actual_rule_set, path_lines, one_statement_line)
+        path, other_statement = utilities.find_statements_references(actual_rule_set, path_lines, other_statement_line)
         mutations.swap(actual_rule_set, path, one_statement, other_statement)
         ast.fix_missing_locations(actual_rule_set)
 

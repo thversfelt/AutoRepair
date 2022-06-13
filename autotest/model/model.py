@@ -8,7 +8,6 @@ from autotest.model.evaluation.evaluation import Evaluation
 from autotest.model.evaluation.instrumentation import Instrumentation
 from autotest.model.evaluation.metrics import Metric
 from autotest.model.modules.perception import Perception
-from autotest.model.modules.rule_set import RuleSet
 from autotest.util.map_api import CustomMapAPI
 
 

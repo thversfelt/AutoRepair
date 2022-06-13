@@ -69,32 +69,35 @@ class AutoTest:
 
         # Aggregate the results.
         results = {}
-        
         for scene_id in scene_ids:
-            if scene_id not in results:
-                results[scene_id] = {
-                    "metrics_scores": [],
-                    "executed_statements": []
-                }
+            
+            # Initialize the results dictionary for this scene.
+            results[scene_id] = {}
 
+            # Set the violation frame as the last frame of the scene.
             num_of_frames = len(executed_statements[scene_id])
             violation_frame_index = num_of_frames - 1
             
             for frame_index in range(num_of_frames):
+                # Skip the frame if it is after the violation frame.
                 if frame_index > violation_frame_index:
                     continue
                 
                 scores = []
                 
+                # Determine the scores of each metric for the frame.
                 for metric_name in metrics_scores[scene_id].keys():
                     score = metrics_scores[scene_id][metric_name][frame_index]
                     scores.append(score)
                     
+                    # When any metric is violated, set the frame as the violation frame.
                     if score < 0.0:
                         violation_frame_index = frame_index
                 
+                # Get the statements that were executed during the frame.
                 statements = executed_statements[scene_id][frame_index]
                 
+                # Add the metric scores and executed statements to the results dictionary.
                 results[scene_id]["metrics_scores"] = scores
                 results[scene_id]["executed_statements"] = statements
         
