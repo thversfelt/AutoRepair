@@ -11,12 +11,14 @@ class RuleSet:
     def process(self, scene: Scene) -> tuple:
         steer = Navigation().process(scene)
         
-        if scene.ego.time_to_collision < 1.6:
-            acceleration = AutomatedEmergencyBraking().process(scene)
-        else:
-            if scene.ego.traffic_light == TrafficLights.RED:
-                acceleration = TrafficLights().process(scene)
-            else:
-                acceleration = AdaptiveCruiseControl().process(scene)
+        # if scene.ego.time_to_collision < 1.6:
+        #     acceleration = AutomatedEmergencyBraking().process(scene)
+        # else:
+        #     if scene.ego.traffic_light == TrafficLights.RED:
+        #         acceleration = TrafficLights().process(scene)
+        #     else:
+        #         acceleration = AdaptiveCruiseControl().process(scene)
+        
+        acceleration = 1.0
         
         return Control().process(scene, steer, acceleration)
