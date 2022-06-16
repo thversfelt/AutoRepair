@@ -46,9 +46,9 @@ class AutoTest:
     def run(self, rule_set: ast.Module, scene_ids: List[int], visualized=False) -> tuple:
         # Assign metrics.
         metrics = [
-            CollisionMetric(),
-            SafeDistanceMetric(),
-            TrafficLightsMetric()
+            CollisionMetric()#,
+            #SafeDistanceMetric(),
+            #TrafficLightsMetric()
         ]
         
         # Initialize the model.

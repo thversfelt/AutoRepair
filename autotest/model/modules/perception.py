@@ -17,3 +17,4 @@ class Perception():
                 self.scenes[scene_index] = Scene(scene_index, scene_id, self.map)
             scene = self.scenes[scene_index]
             scene.update(data_batch)
+            scene.visualize()

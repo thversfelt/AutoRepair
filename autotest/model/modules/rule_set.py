@@ -19,6 +19,6 @@ class RuleSet:
         #     else:
         #         acceleration = AdaptiveCruiseControl().process(scene)
         
-        acceleration = 1.0
+        acceleration = 0.0
         
         return Control().process(scene, steer, acceleration)
