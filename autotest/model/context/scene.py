@@ -1,5 +1,4 @@
 import torch
-import matplotlib.pyplot as plt
 
 from typing import Dict
 from autotest.model.context.agent import EgoAgent, VehicleAgent
@@ -48,35 +47,3 @@ class Scene:
         outdated_agents_ids = list(set(all_agents_ids) - set(updated_agents_ids))
         for agent_id in outdated_agents_ids:
             del self.agents[agent_id]
-
-    def visualize(self):
-        # Visualize the road network.
-        lanes_ids_to_draw = set()
-        
-        for agent in self.agents.values():
-            if agent.parked:
-                continue
-            for lane_id in agent.route:
-                lanes_ids_to_draw.add(lane_id)
-        for lane_id in self.ego.route:
-            lanes_ids_to_draw.add(lane_id)
-
-        plt.figure()
-    
-        for lane_id in lanes_ids_to_draw:
-            lane_polygon = self.map.get_lane_polygon(lane_id)
-            plt.plot(*lane_polygon.exterior.xy, color='grey')
-            
-        for agent in self.agents.values():
-            agent_polygon = agent.get_polygon()
-            if agent.parked:
-                plt.plot(*agent_polygon.exterior.xy, color='black')
-            else:
-                plt.plot(*agent_polygon.exterior.xy, color='red')
-        
-        ego_polygon = self.ego.get_polygon()
-        plt.plot(*ego_polygon.exterior.xy, color='blue')
-        
-        plt.axis('scaled')
-        plt.show()
-        print("")
