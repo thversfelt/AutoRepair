@@ -8,7 +8,7 @@ from autotest.util.map_api import CustomMapAPI
 class Perception():
     def __init__(self, map: CustomMapAPI):
         self.map = map
-        self.scenes: Dict[Scene] = {}
+        self.scenes: Dict[int, Scene] = {}
 
     def process(self, data_batch: Dict[str, torch.Tensor]):
         scene_ids = data_batch['scene_index'].cpu().numpy()

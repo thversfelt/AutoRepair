@@ -9,6 +9,7 @@ from autotest.model.evaluation.instrumentation import Instrumentation
 from autotest.model.evaluation.metrics import Metric
 from autotest.model.modules.perception import Perception
 from autotest.util.map_api import CustomMapAPI
+from autotest.util.visualization import visualize_scene
 
 
 class Model(nn.Module):

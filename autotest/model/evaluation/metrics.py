@@ -26,12 +26,17 @@ class CollisionMetric(Metric):
         
         for agent in scene.agents.values():
             
+            # Skip agents that are trailing the ego (only frontal collisions should be considered).
+            if agent in scene.ego.trailers:
+                continue
+            
             agent_bounding_box = _get_bounding_box(agent.position, agent.yaw, agent.extent)
             intersection = agent_bounding_box.intersection(ego_bounding_box)
-            
+
+            # Check if the ego and agent are colliding in the ego's predicted position.
             if intersection.area == 0:
                 continue
-                
+            
             relative_speed = abs(scene.ego.speed - agent.speed)
             score = -1.0 * relative_speed / (relative_speed + 1)
             
@@ -50,6 +55,7 @@ class SafeDistanceMetric(Metric):
         score = 0.0
         
         if scene.ego.leader is not None:
+            
             # Determine the braking distance https://en.wikipedia.org/wiki/Braking_distance
             braking_distance = scene.ego.speed * 1.5 + scene.ego.speed**2 / (2 * 0.7 * 9.81)
             

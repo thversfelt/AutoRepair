@@ -3,9 +3,10 @@ from time import time
 import numpy as np
 import torch
 
-from typing import Deque, Dict
-from l5kit.geometry.transform import transform_point, transform_points, yaw_as_rotation33
+from typing import Deque, Dict, List
+from l5kit.geometry.transform import transform_point, transform_points
 from autotest.util.map_api import CustomMapAPI
+from shapely.geometry import Polygon
 
 
 class Agent:
@@ -33,6 +34,28 @@ class Agent:
     def update_transformation_matrices(self, data_batch: Dict[str, torch.Tensor]):
         self.world_from_ego = data_batch["world_from_agent"][self.scene_index].cpu().numpy()
         self.ego_from_world = data_batch["agent_from_world"][self.scene_index].cpu().numpy()
+        
+    def get_polygon(self):
+        """Get world coordinates of the 4 corners of the bounding boxes
+
+        :param agents: agents array of size N with centroid (world coord), yaw and extent
+        :return: array of shape (N, 4, 2) with the four corners of each agent
+        """
+        # shape is (1, 4, 2)
+        base_vertices = np.asarray([[-1, -1], [-1, 1], [1, 1], [1, -1]]) * 0.5
+
+        # compute the corner in world-space (start in origin, rotate and then translate)
+        # extend extent to shape (N, 1, 2) so that op gives (N, 4, 2)
+        vertices = base_vertices * self.extent  # corners in zero
+        s = np.sin(self.yaw)
+        c = np.cos(self.yaw)
+        # note this is clockwise because it's right-multiplied and not left-multiplied later,
+        # and therefore we're still rotating counterclockwise.
+        rotation = np.moveaxis(np.array(((c, s), (-s, c))), 2, 0)
+        # extend centroid to shape (N, 1, 2) so that op gives (N, 4, 2)
+        vertices = vertices @ rotation + self.position
+        vertices = np.concatenate([vertices[0], [vertices[0][0]]])
+        return Polygon(vertices)
 
 class VehicleAgent(Agent):
     
@@ -52,9 +75,10 @@ class VehicleAgent(Agent):
         self.update_yaw(data_batch)
         self.update_extent(data_batch)
         self.update_velocity(data_batch)
-        
         self.update_trajectory(data_batch)
-        self.update_route(data_batch)
+        
+        self.update_route()
+        self.update_parking()
         
     def update_position(self, data_batch: Dict[str, torch.Tensor]):
         # Get the agent's local position.
@@ -111,19 +135,15 @@ class VehicleAgent(Agent):
             # Transform the trajectory to the world reference system.
             self.trajectory = transform_points(trajectory, self.world_from_ego)
 
-    def update_route(self, data_batch: Dict[str, torch.Tensor]):
-        if self.route is None and self.parked == False:
-            self.determine_route(data_batch)
+    def update_route(self):
+        if self.route is None:
+            self.determine_route()
         else:
             self.adjust_route()
         
-    def determine_route(self, data_batch: Dict[str, torch.Tensor]):
+    def determine_route(self):
         # Get the route that matches the trajectory.
         self.route = self.map.get_route(self.trajectory)
-        
-        # If no route could be found, the vehicle doesn't appear to move.
-        if self.route is None:
-            self.parked = True
         
     def adjust_route(self):
         # Ensure the agent has a route.
@@ -146,7 +166,20 @@ class VehicleAgent(Agent):
         # The first lane of the route is not the current lane anymore, remove it.
         if in_next_lane:
             self.route.popleft()
-            
+       
+    def update_parking(self):
+        if self.route is None:
+            # If no route could be found, the agent is definitely parked.
+            self.parked = True
+        elif len(self.route) == 1:
+            # The agent is on a single lane, during the whole scene, so let's check if it is parked.
+            current_lane_id = self.route[0]
+            lane_midpoints = self.map.get_closest_lane_midpoints(self.position, current_lane_id)
+            closest_lane_midpoint = lane_midpoints[0]
+            lane_offset = np.linalg.norm(self.position - closest_lane_midpoint)
+            if lane_offset > 1.0:
+                self.parked = True
+
 class EgoAgent(Agent):
 
     def __init__(self, map: CustomMapAPI, scene_index: int):
@@ -156,6 +189,8 @@ class EgoAgent(Agent):
         self.width: float = None
         
         self.leader: VehicleAgent = None
+        self.trailers: List[VehicleAgent] = None
+        
         self.time_to_collision: float = None
         self.traffic_light = None
 
@@ -167,8 +202,10 @@ class EgoAgent(Agent):
         self.update_extent(data_batch)
         self.update_velocity(data_batch)
         self.update_trajectory(data_batch)
-        self.update_route(data_batch)
+        
+        self.update_route()
         self.update_leader(agents)
+        self.update_trailers(agents)
         self.update_time_to_collision(agents)
         self.update_traffic_light(data_batch)
 
@@ -176,7 +213,7 @@ class EgoAgent(Agent):
         self.position = data_batch["centroid"][self.scene_index].cpu().numpy()
     
     def update_yaw(self, data_batch: Dict[str, torch.Tensor]):
-        self.yaw = data_batch["yaw"][self.scene_index].cpu().numpy()
+        self.yaw = np.reshape(data_batch["yaw"][self.scene_index].cpu().numpy(), (1,))
     
     def update_extent(self, data_batch: Dict[str, torch.Tensor]):
         self.extent = data_batch["extent"][self.scene_index][:2].cpu().numpy()
@@ -223,13 +260,13 @@ class EgoAgent(Agent):
             # Transform the trajectory to the world reference system.
             self.trajectory = transform_points(trajectory, self.world_from_ego)
     
-    def update_route(self, data_batch: Dict[str, torch.Tensor]):
+    def update_route(self):
         if self.route is None:
-            self.determine_route(data_batch)
+            self.determine_route()
         else:
             self.adjust_route()
     
-    def determine_route(self, data_batch: Dict[str, torch.Tensor]):
+    def determine_route(self):
         # Get the route that matches the trajectory.
         self.route = self.map.get_route(self.trajectory)
 
@@ -295,6 +332,26 @@ class EgoAgent(Agent):
             
             if agent_distance_to_ego < leader_distance_to_ego:
                 self.leader = agent
+    
+    def update_trailers(self, agents: Dict[int, VehicleAgent]):
+        if self.trailers is None:
+            self.trailers = []
+            
+            for _, agent in agents.items():
+                # Ensure the agent has a route.
+                if agent.route is None: 
+                    continue
+                
+                # Ensure the ego and agent share one or more lanes in their route.
+                if set(self.route).isdisjoint(set(agent.route)): 
+                    continue
+
+                # Ensure the agent is behind the ego.
+                if agent.local_position[0] > 0: 
+                    continue
+                
+                # Add the agent to the list of trailing agents.
+                self.trailers.append(agent)
     
     def update_time_to_collision(self, agents: Dict[int, VehicleAgent]):
         self.time_to_collision = 99999
