@@ -8,6 +8,7 @@ from autotest.autodrive import rule_set
 from autotest.auto_test import AutoTest
 import numpy as np
 from autorepair.ariel import Ariel
+from autorepair.mutations import shift
 from autorepair.test_suite import TestSuite
 from typing import List
 
@@ -18,9 +19,9 @@ class ExampleTestSuite(TestSuite):
         self.simulator = simulator
 
     def evaluate(self, rule_set: ast.Module) -> dict:
-        return self.simulator.simulate(rule_set, self.test_ids)
+        return self.simulator.simulate(rule_set, self.test_ids, visualize=True)
 
-test_ids = [44, 45, 46, 47, 48, 49, 50, 51, 52, 53]
+test_ids = [96]
 simulator = AutoTest("sample", test_ids)
 
 rule_set = ast.parse(inspect.getsource(autotest.autodrive.rule_set))

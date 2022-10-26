@@ -23,7 +23,7 @@ def select(suspiciousness: Dict[str, float]) -> str:
         value += suspiciousness
     assert False, "Shouldn't get here"
     
-def find_reference(rule_set: ast.Module, statement: str) -> ast.If:
+def find_statement_reference(rule_set: ast.Module, statement: str) -> ast.If:
     """Find the reference to the statement in the rule set.
 
     Args:
@@ -47,4 +47,7 @@ def order_of_magnitude(value: float) -> float:
     Returns:
         float: The order of magnitude of the value.
     """
-    return 10 ** int(math.log10(value))
+    if value == 0:
+        return 1
+    else:
+        return 10 ** int(math.log10(abs(value)))

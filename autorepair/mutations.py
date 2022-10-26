@@ -2,7 +2,7 @@ import ast
 import random
 
 from typing import List, Tuple
-from utilities import find_reference, order_of_magnitude
+from utilities import find_statement_reference, order_of_magnitude
 
 
 INVERSE_RELATIONAL_OPERATOR = {
@@ -16,7 +16,7 @@ INVERSE_RELATIONAL_OPERATOR = {
 
 def modify(individual: ast.Module, path: List[str], statement: str) -> Tuple[List[str], str]:
     # Find the applicable reference to the statement.
-    statement_reference = find_reference(individual, statement)
+    statement_reference = find_statement_reference(individual, statement)
     threshold_values_references = [node for node in ast.walk(statement_reference.test) if isinstance(node, ast.Num)]
     threshold_value_reference = None if len(threshold_values_references) == 0 else threshold_values_references[0]
     
@@ -51,4 +51,25 @@ def modify_threshold_value(threshold: ast.Num) -> None:
     threshold.value = random.gauss(threshold.value, order_of_magnitude(threshold.value))
 
 def shift(individual: ast.Module, path: List[str], statement: str) -> Tuple[List[str], str]:
-    return None
+    target_statement = random.choice([path_statement for path_statement in path if path_statement != statement])
+    
+    target_statement_reference = find_statement_reference(individual, target_statement)
+    statement_reference = find_statement_reference(individual, statement)
+    
+    target_statement_test = target_statement_reference.test
+    target_statement_body = target_statement_reference.body
+    
+    statement_test = statement_reference.test
+    statement_body = statement_reference.body
+    
+    target_statement_reference.test = statement_test
+    target_statement_reference.body = statement_body
+    
+    statement_reference.test = target_statement_test
+    statement_reference.body = target_statement_body
+    
+    # Fix the mutated individual's missing locations, which can be caused by the mutation.
+    ast.fix_missing_locations(individual)
+
+    return path, statement
+    

@@ -134,8 +134,8 @@ class Ariel:
                 # Determine if the statement was executed (covered) by the test.
                 covers = 1 if statement in results["executed_paths"][test_id] else 0
                 suspiciousness[statement] += weights[test_id] * covers / total_weight
-            passed_ratio = passed[statement] / total_passed
-            failed_ratio = failed[statement] / total_failed
+            passed_ratio = passed[statement] / total_passed if total_passed != 0 else 0
+            failed_ratio = failed[statement] / total_failed if total_failed != 0 else 0
             suspiciousness[statement] /= (passed_ratio + failed_ratio)
         
         # Select a statement using roulette wheel selection.
@@ -149,8 +149,7 @@ class Ariel:
     
     @staticmethod
     def apply_mutation(individual: ast.Module, path: List[str], statement: str) -> str:
-        #mutate = random.choice([modify, shift]) if len(path) > 1 else modify
-        mutate = modify
+        mutate = random.choice([modify, shift]) if len(path) > 1 else modify
         mutated_path, mutated_statement = mutate(individual, path, statement)
         return mutated_path, mutated_statement
     
