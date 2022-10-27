@@ -11,24 +11,23 @@ from typing import Dict, List
 
 class Ariel:
     @staticmethod
-    def repair(rule_set: ast.Module, test_suite: TestSuite) -> None:
+    def repair(rule_set: ast.Module, test_suite: TestSuite, budget: int) -> None:
         results = test_suite.evaluate(rule_set)
         archive = Ariel.update_archive({}, rule_set, results)
         
-        while not Ariel.solution_found(archive):
+        number_of_iterations = 0
+        archives = {number_of_iterations: copy.copy(archive)}
+        while not Ariel.solution_found(archive) and number_of_iterations < budget:
             parent, parent_results = Ariel.select_parent(archive)
             offspring = Ariel.generate_patch(parent, parent_results)
             print(ast.unparse(offspring))
             offspring_results = test_suite.evaluate(offspring)
             archive = Ariel.update_archive(archive, offspring, offspring_results)
+            
+            number_of_iterations += 1
+            archives[number_of_iterations] = copy.copy(archive)
         
-        # return the first and only patch in the archive.
-        patch = list(archive.keys())[0]
-        patch_results = archive[patch]
-        print("Patch found!")
-        print(ast.unparse(patch))
-        print(patch_results)
-        return patch
+        return archives
     
     @staticmethod
     def update_archive(archive: Dict[ast.Module, dict], individual: ast.Module, results: dict) -> dict:
