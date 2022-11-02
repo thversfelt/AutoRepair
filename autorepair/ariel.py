@@ -11,55 +11,62 @@ from typing import Dict, List
 
 class Ariel:
     @staticmethod
-    def repair(rule_set: ast.Module, test_suite: TestSuite, budget: int) -> None:
-        results = test_suite.evaluate(rule_set)
-        archive = Ariel.update_archive({}, rule_set, results)
+    def repair(rule_set: ast.Module, test_suite: TestSuite, budget: int, validate: bool) -> None:
+        iteration = 0
         
-        number_of_iterations = 0
-        archives = {number_of_iterations: copy.copy(archive)}
-        while not Ariel.solution_found(archive) and number_of_iterations < budget:
-            parent, parent_results = Ariel.select_parent(archive)
-            offspring = Ariel.generate_patch(parent, parent_results)
-            print(ast.unparse(offspring))
-            offspring_results = test_suite.evaluate(offspring)
-            archive = Ariel.update_archive(archive, offspring, offspring_results)
+        evaluation_results = test_suite.evaluate(rule_set)
+        archive = Ariel.update_archive({}, rule_set, evaluation_results, test_suite, validate)
+        archives = {iteration: archive}
+        
+        while not Ariel.solution_found(archive) and iteration < budget:
+            iteration += 1
             
-            number_of_iterations += 1
-            archives[number_of_iterations] = copy.copy(archive)
-        
+            parent, parent_evaluation_results = Ariel.select_parent(archive)
+            offspring = Ariel.generate_patch(parent, parent_evaluation_results)
+            offspring_evaluation_results = test_suite.evaluate(offspring)
+            archive = Ariel.update_archive(archive, offspring, offspring_evaluation_results, test_suite, validate)
+            archives[iteration] = archive
+
         return archives
     
     @staticmethod
-    def update_archive(archive: Dict[ast.Module, dict], individual: ast.Module, results: dict) -> dict:
+    def update_archive(archive: Dict[ast.Module, dict], individual: ast.Module, evaluation_results: dict, test_suite: TestSuite, validate: bool) -> dict:
         """Removes dominated elitists from the archive and adds the new individual if it is not dominated."""
-        metrics_scores = np.minimum.reduce([results["metrics_scores"][test_id] for test_id in results["metrics_scores"]])
+        metrics_scores = np.minimum.reduce([evaluation_results["metrics_scores"][test_id] for test_id in evaluation_results["metrics_scores"]])
 
-        # Remove dominated elitists from the archive.
+        # Determine which elitists are dominated by the individual.
         dominated_elitists = []
         for elitist, elitist_results in archive.items():
-            elitist_metrics_scores = np.minimum.reduce([elitist_results["metrics_scores"][test_id] for test_id in elitist_results["metrics_scores"]])
+            elitist_metrics_scores = np.minimum.reduce([elitist_results["evaluation_results"]["metrics_scores"][test_id] for test_id in elitist_results["evaluation_results"]["metrics_scores"]])
             if np.all(metrics_scores >= elitist_metrics_scores):
                 dominated_elitists.append(elitist)
+                
+        # Remove the dominated elitists from the archive.
         for elitist in dominated_elitists:
             archive.pop(elitist)
             
-        # Add the new individual if it is not dominated.
+        # Determine which elitists dominate the individual.
         dominating_elitists = []
         for elitist, elitist_results in archive.items():
-            elitist_metrics_scores = np.minimum.reduce([elitist_results["metrics_scores"][test_id] for test_id in elitist_results["metrics_scores"]])
+            elitist_metrics_scores = np.minimum.reduce([elitist_results["evaluation_results"]["metrics_scores"][test_id] for test_id in elitist_results["evaluation_results"]["metrics_scores"]])
             if np.all(metrics_scores <= elitist_metrics_scores):
                 dominating_elitists.append(elitist)
+        
+        # Add the individual to the archive if it is not dominated.
         if len(dominating_elitists) == 0:
-            archive[individual] = results
-            
+            archive[individual] = {
+                "evaluation_results": evaluation_results,
+                "validation_results": test_suite.validate(individual) if validate else None
+            }
+
         return archive
     
     @staticmethod
     def select_parent(archive: dict) -> tuple:
         potential_parents = list(archive.keys())
         parent = random.choice(potential_parents)
-        parent_results = archive[parent]
-        return parent, parent_results
+        parent_evaluation_results = archive[parent]["evaluation_results"]
+        return parent, parent_evaluation_results
     
     @staticmethod
     def generate_patch(individual: ast.Module, results: dict) -> ast.Module:
@@ -158,7 +165,7 @@ class Ariel:
             return False
         else:
             elitist_results = list(archive.values())[0]
-            elitist_metrics_scores = np.minimum.reduce([elitist_results["metrics_scores"][test_id] for test_id in elitist_results["metrics_scores"]])
+            elitist_metrics_scores = np.minimum.reduce([elitist_results["evaluation_results"]["metrics_scores"][test_id] for test_id in elitist_results["evaluation_results"]["metrics_scores"]])
             solution_found = True if np.all(elitist_metrics_scores == 0) else False
             return solution_found
             

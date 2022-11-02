@@ -9,3 +9,6 @@ class TestSuite:
     
     def evaluate(self, rule_set: ast.Module) -> dict:
         pass
+    
+    def validate(self, rule_set: ast.Module) -> dict:
+        pass
