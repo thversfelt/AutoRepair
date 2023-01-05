@@ -2,7 +2,7 @@ import ast
 import random
 
 from typing import List, Tuple
-from utilities import find_statement_reference, order_of_magnitude
+from autorepair.utilities import find_statement_reference, order_of_magnitude
 
 
 INVERSE_RELATIONAL_OPERATOR = {

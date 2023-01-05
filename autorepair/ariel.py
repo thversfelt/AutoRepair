@@ -16,48 +16,56 @@ class Ariel:
         
         evaluation_results = test_suite.evaluate(rule_set)
         archive = Ariel.update_archive({}, rule_set, evaluation_results, test_suite, validate)
-        archives = {iteration: archive}
+        archives = {iteration: copy.deepcopy(archive)}
         
         while not Ariel.solution_found(archive) and iteration < budget:
             iteration += 1
             
             parent, parent_evaluation_results = Ariel.select_parent(archive)
             offspring = Ariel.generate_patch(parent, parent_evaluation_results)
-            offspring_evaluation_results = test_suite.evaluate(offspring)
-            archive = Ariel.update_archive(archive, offspring, offspring_evaluation_results, test_suite, validate)
-            archives[iteration] = archive
+            offspring_evaluation_results = test_suite.evaluate(offspring, parent_evaluation_results)
+            archive = Ariel.update_archive(archive, offspring, offspring_evaluation_results, test_suite, validate, parent_evaluation_results)
+            archives[iteration] = copy.deepcopy(archive)
 
         return archives
     
     @staticmethod
-    def update_archive(archive: Dict[ast.Module, dict], individual: ast.Module, evaluation_results: dict, test_suite: TestSuite, validate: bool) -> dict:
+    def update_archive(archive: Dict[ast.Module, dict], individual: ast.Module, evaluation_results: dict, test_suite: TestSuite, validate: bool, parent_evaluation_results: dict = None) -> dict:
         """Removes dominated elitists from the archive and adds the new individual if it is not dominated."""
-        metrics_scores = np.minimum.reduce([evaluation_results["metrics_scores"][test_id] for test_id in evaluation_results["metrics_scores"]])
+        metrics_scores = np.minimum.reduce([evaluation_results[test_id]["metrics_scores"] for test_id in evaluation_results])
 
         # Determine which elitists are dominated by the individual.
         dominated_elitists = []
         for elitist, elitist_results in archive.items():
-            elitist_metrics_scores = np.minimum.reduce([elitist_results["evaluation_results"]["metrics_scores"][test_id] for test_id in elitist_results["evaluation_results"]["metrics_scores"]])
+            elitist_metrics_scores = np.minimum.reduce([elitist_results["evaluation_results"][test_id]["metrics_scores"] for test_id in elitist_results["evaluation_results"]])
             if np.all(metrics_scores >= elitist_metrics_scores):
                 dominated_elitists.append(elitist)
-                
-        # Remove the dominated elitists from the archive.
-        for elitist in dominated_elitists:
-            archive.pop(elitist)
-            
+
         # Determine which elitists dominate the individual.
         dominating_elitists = []
         for elitist, elitist_results in archive.items():
-            elitist_metrics_scores = np.minimum.reduce([elitist_results["evaluation_results"]["metrics_scores"][test_id] for test_id in elitist_results["evaluation_results"]["metrics_scores"]])
+            elitist_metrics_scores = np.minimum.reduce([elitist_results["evaluation_results"][test_id]["metrics_scores"] for test_id in elitist_results["evaluation_results"]])
             if np.all(metrics_scores <= elitist_metrics_scores):
                 dominating_elitists.append(elitist)
         
-        # Add the individual to the archive if it is not dominated.
-        if len(dominating_elitists) == 0:
-            archive[individual] = {
-                "evaluation_results": evaluation_results,
-                "validation_results": test_suite.validate(individual) if validate else None
-            }
+        # If the individual is dominated by any elitists, return the archive without adding the individual.
+        if len(dominating_elitists) > 0:
+            return archive
+        
+        # Remove the dominated elitists from the archive.
+        for elitist in dominated_elitists:
+            archive.pop(elitist)
+        
+        # Validate the individual if requested.
+        validation_results = None
+        if validate:
+            validation_results = test_suite.validate(individual, parent_evaluation_results)
+        
+        # Add the individual to the archive.
+        archive[individual] = {
+            "evaluation_results": evaluation_results,
+            "validation_results": validation_results
+        }
 
         return archive
     
@@ -86,18 +94,18 @@ class Ariel:
     
     @staticmethod
     def fault_localization(results: dict) -> tuple:
-        test_ids = list(results["executed_paths"].keys())
+        test_ids = list(results.keys())
         
         failing_test_ids = []
-        failing_executed_paths = []
+        failing_executed_paths = set()
         
         passed = {}
         failed = {}
         weights = {}
         
         for test_id in test_ids:
-            executed_path = results["executed_paths"][test_id]
-            metrics_scores = results["metrics_scores"][test_id]
+            executed_path = results[test_id]["executed_paths"]
+            metrics_scores = results[test_id]["metrics_scores"]
             violation_severity = abs(min(metrics_scores))
             weights[test_id] = violation_severity
             failing = True if violation_severity > 0 else False
@@ -106,7 +114,7 @@ class Ariel:
             # paths that were run by failing tests.
             if failing:
                 failing_test_ids.append(test_id)
-                failing_executed_paths.append(executed_path)
+                failing_executed_paths.add(tuple(executed_path))
             
             for statement in executed_path:
                 # Initialize the statement passed/failed counters.
@@ -138,7 +146,7 @@ class Ariel:
         for statement in statements:
             for test_id in test_ids:
                 # Determine if the statement was executed (covered) by the test.
-                covers = 1 if statement in results["executed_paths"][test_id] else 0
+                covers = 1 if statement in results[test_id]["executed_paths"] else 0
                 suspiciousness[statement] += weights[test_id] * covers / total_weight
             passed_ratio = passed[statement] / total_passed if total_passed != 0 else 0
             failed_ratio = failed[statement] / total_failed if total_failed != 0 else 0
@@ -165,7 +173,7 @@ class Ariel:
             return False
         else:
             elitist_results = list(archive.values())[0]
-            elitist_metrics_scores = np.minimum.reduce([elitist_results["evaluation_results"]["metrics_scores"][test_id] for test_id in elitist_results["evaluation_results"]["metrics_scores"]])
+            elitist_metrics_scores = np.minimum.reduce([elitist_results["evaluation_results"][test_id]["metrics_scores"] for test_id in elitist_results["evaluation_results"]])
             solution_found = True if np.all(elitist_metrics_scores == 0) else False
             return solution_found
             

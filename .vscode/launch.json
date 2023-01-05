@@ -5,7 +5,19 @@
             "name": "Ariel Example",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/autorepair/example.py",
+            "program": "${workspaceFolder}/autorepair/benchmarks/autotest/example.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceRoot}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Visualization",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/autorepair/visualization.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceRoot}",
             "env": {
