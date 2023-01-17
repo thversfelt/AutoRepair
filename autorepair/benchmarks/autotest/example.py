@@ -42,13 +42,11 @@ class RandomAutoTestSuite(TestSuite):
         return simulate_scenes(rule_set, validation_scenes, self.metrics)
 
 class PrioritizedAutoTestSuite(TestSuite):
-    def __init__(self, scenes, cutoff, metrics) -> None:
+    def __init__(self, scenes, prioritized_scenes_ids, cutoff, metrics) -> None:
         self.scenes = scenes
+        self.prioritized_scenes_ids = prioritized_scenes_ids
         self.cutoff = cutoff
         self.metrics = metrics
-        
-        scenes_features = featurize_scenes(self.scenes)
-        self.prioritized_scenes_ids = prioritize_scenes(scenes_features)
         
     def evaluate(self, rule_set: ast.Module, parent_evaluation_results: dict = None) -> dict:
         # Evaluate the scenes with the highest priority, up to the cutoff.
@@ -99,26 +97,31 @@ if __name__ == '__main__':
                   983, 85, 2718, 3288, 429, 10121, 13506, 762, 7360, 7477, 5725, 2820, 624, 9084, 1514, 9064, 10774, 
                   15662, 2645]
     scenes = load_scenes(scenes_ids, dataset_name)
+    scenes_features = featurize_scenes(scenes)
+    prioritized_scenes_ids = prioritize_scenes(scenes_features)
     metrics = [AdaptiveCruiseControlMetric(), TrafficLightManagementMetric()]
+    
     faulty_rule_set = ast.parse(inspect.getsource(autotest.autodrive.faulty_rule_set))
-   
-    budget = 10
-    number_of_faults = 3
+    number_of_faults = 2
+    
+    cutoffs = [25, 50, 75]
+    budget = 15
     repetitions = 20
 
-    # Create a progress bar to show the progress of the experiments.
-    progress_bar = tqdm(desc=f'Running experiment', total=repetitions)
-    
-    results = {}
-    for repetition in range(repetitions):
-        test_suite = FailingAutoTestSuite(scenes, metrics)
-        archives = Ariel.repair(faulty_rule_set, test_suite, budget, validate=True)
-        results[repetition] = archives
-        progress_bar.update(n=1)
+    for cutoff in cutoffs:
+        # Create a progress bar to show the progress of the experiments.
+        progress_bar = tqdm(desc=f'Running experiment', total=repetitions)
         
-    # Save the results to a file.
-    with open(f"failing_test_suite_number_of_faults_{number_of_faults}.pkl", "wb") as file:
-        pickle.dump(results, file)
+        results = {}
+        for repetition in range(repetitions):
+            test_suite = PrioritizedAutoTestSuite(scenes, prioritized_scenes_ids, cutoff, metrics)
+            archives = Ariel.repair(faulty_rule_set, test_suite, budget, validate=True)
+            results[repetition] = archives
+            progress_bar.update(n=1)
+            
+        # Save the results to a file.
+        with open(f"prioritized_test_suite_cutoff_{cutoff}_number_of_faults_{number_of_faults}.pkl", "wb") as file:
+            pickle.dump(results, file)
 
     # test_suite_cutoffs = [50, 75]
 
