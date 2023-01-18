@@ -3,7 +3,7 @@ import random
 import numpy as np
 import copy
 
-from autorepair.test_suite import TestSuite
+from autorepair.benchmarks.test_suite import TestSuite
 from autorepair.utilities import select
 from autorepair.mutations import modify, shift
 from typing import Dict, List
@@ -11,26 +11,29 @@ from typing import Dict, List
 
 class Ariel:
     @staticmethod
-    def repair(rule_set: ast.Module, test_suite: TestSuite, budget: int, validate: bool) -> None:
-        iteration = 0
+    def repair(rule_set: ast.Module, test_suite: TestSuite, evaluation_tests_ids: List[int], budget: int, validate: bool=False, evaluate_failing_tests: bool=False) -> None:
         
-        evaluation_results = test_suite.evaluate(rule_set)
+        evaluation_results = test_suite.evaluate(rule_set, evaluation_tests_ids)
+        evaluation_tests_ids = Ariel.failing_tests_ids(evaluation_results) if evaluate_failing_tests else evaluation_tests_ids
+        total_execution_time = sum([evaluation_results[test_id]["execution_time"] for test_id in evaluation_results])
         archive = Ariel.update_archive({}, rule_set, evaluation_results, test_suite, validate)
-        archives = {iteration: copy.deepcopy(archive)}
+        checkpoints = {total_execution_time: copy.deepcopy(archive)}
         
-        while not Ariel.solution_found(archive) and iteration < budget:
-            iteration += 1
+        while not Ariel.solution_found(archive) and total_execution_time < budget:
+            parent_rule_set, parent_evaluation_results = Ariel.select_parent(archive)
             
-            parent, parent_evaluation_results = Ariel.select_parent(archive)
-            offspring = Ariel.generate_patch(parent, parent_evaluation_results)
-            offspring_evaluation_results = test_suite.evaluate(offspring, parent_evaluation_results)
-            archive = Ariel.update_archive(archive, offspring, offspring_evaluation_results, test_suite, validate, parent_evaluation_results)
-            archives[iteration] = copy.deepcopy(archive)
+            offspring_rule_set = Ariel.generate_patch(parent_rule_set, parent_evaluation_results)
+            offspring_evaluation_results = test_suite.evaluate(offspring_rule_set, evaluation_tests_ids)
+            offspring_execution_time = sum([offspring_evaluation_results[test_id]["execution_time"] for test_id in offspring_evaluation_results])
+            total_execution_time += offspring_execution_time
+            
+            archive = Ariel.update_archive(archive, offspring_rule_set, offspring_evaluation_results, test_suite, validate)
+            checkpoints[total_execution_time] = copy.deepcopy(archive)
 
-        return archives
+        return checkpoints
     
     @staticmethod
-    def update_archive(archive: Dict[ast.Module, dict], individual: ast.Module, evaluation_results: dict, test_suite: TestSuite, validate: bool, parent_evaluation_results: dict = None) -> dict:
+    def update_archive(archive: Dict[ast.Module, dict], rule_set: ast.Module, evaluation_results: dict, test_suite: TestSuite, validate: bool) -> dict:
         """Removes dominated elitists from the archive and adds the new individual if it is not dominated."""
         metrics_scores = np.minimum.reduce([evaluation_results[test_id]["metrics_scores"] for test_id in evaluation_results])
 
@@ -57,12 +60,11 @@ class Ariel:
             archive.pop(elitist)
         
         # Validate the individual if requested.
-        validation_results = None
-        if validate:
-            validation_results = test_suite.validate(individual, parent_evaluation_results)
+        evaluation_tests_ids = [test_id for test_id in evaluation_results]
+        validation_results = test_suite.validate(rule_set, evaluation_tests_ids) if validate else None
         
         # Add the individual to the archive.
-        archive[individual] = {
+        archive[rule_set] = {
             "evaluation_results": evaluation_results,
             "validation_results": validation_results
         }
@@ -176,4 +178,12 @@ class Ariel:
             elitist_metrics_scores = np.minimum.reduce([elitist_results["evaluation_results"][test_id]["metrics_scores"] for test_id in elitist_results["evaluation_results"]])
             solution_found = True if np.all(elitist_metrics_scores == 0) else False
             return solution_found
-            
+    
+    @staticmethod
+    def failing_tests_ids(evaluation_results: dict = None) -> List[int]:
+        failing_tests_ids = []
+        for test_id, test_evaluation_results in evaluation_results.items():
+            metrics_scores = test_evaluation_results["metrics_scores"]
+            if np.any(metrics_scores < 0):
+                failing_tests_ids.append(test_id)
+        return failing_tests_ids

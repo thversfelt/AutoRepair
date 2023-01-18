@@ -44,7 +44,6 @@ def modify_relational_operator(condition: ast.Compare) -> None:
     relational_operator = type(condition.ops[0])
     condition.ops = [INVERSE_RELATIONAL_OPERATOR[relational_operator]()]
     
-
 def modify_threshold_value(threshold: ast.Num) -> None:
     # The theshold value is mutated using a gaussian distribution with a mean of at the current value and a standard
     # deviation of the order of magnitude of the current value.
