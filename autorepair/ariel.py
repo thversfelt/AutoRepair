@@ -15,20 +15,19 @@ class Ariel:
         
         evaluation_results = test_suite.evaluate(rule_set, evaluation_tests_ids)
         evaluation_tests_ids = Ariel.failing_tests_ids(evaluation_results) if evaluate_failing_tests else evaluation_tests_ids
-        total_execution_time = sum([evaluation_results[test_id]["execution_time"] for test_id in evaluation_results])
+        execution_time = Ariel.execution_time(evaluation_results)
         archive = Ariel.update_archive({}, rule_set, evaluation_results, test_suite, validate)
-        checkpoints = {total_execution_time: copy.deepcopy(archive)}
+        checkpoints = {execution_time: copy.deepcopy(archive)}
         
-        while not Ariel.solution_found(archive) and total_execution_time < budget:
+        while not Ariel.solution_found(archive) and execution_time < budget:
             parent_rule_set, parent_evaluation_results = Ariel.select_parent(archive)
             
             offspring_rule_set = Ariel.generate_patch(parent_rule_set, parent_evaluation_results)
             offspring_evaluation_results = test_suite.evaluate(offspring_rule_set, evaluation_tests_ids)
-            offspring_execution_time = sum([offspring_evaluation_results[test_id]["execution_time"] for test_id in offspring_evaluation_results])
-            total_execution_time += offspring_execution_time
+            execution_time += Ariel.execution_time(offspring_evaluation_results)
             
             archive = Ariel.update_archive(archive, offspring_rule_set, offspring_evaluation_results, test_suite, validate)
-            checkpoints[total_execution_time] = copy.deepcopy(archive)
+            checkpoints[execution_time] = copy.deepcopy(archive)
 
         return checkpoints
     
@@ -187,3 +186,10 @@ class Ariel:
             if np.any(metrics_scores < 0):
                 failing_tests_ids.append(test_id)
         return failing_tests_ids
+    
+    @staticmethod
+    def execution_time(evaluation_results: dict = None) -> float:
+        earliest_start_time = np.minimum.reduce([evaluation_results[test_id]["execution_start_time"] for test_id in evaluation_results])
+        latest_end_time = np.maximum.reduce([evaluation_results[test_id]["execution_end_time"] for test_id in evaluation_results])
+        execution_time = latest_end_time - earliest_start_time
+        return execution_time

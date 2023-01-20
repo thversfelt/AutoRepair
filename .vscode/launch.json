@@ -14,6 +14,18 @@
             "justMyCode": false
         },
         {
+            "name": "Experiment",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/autorepair/benchmarks/autotest/experiment.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceRoot}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "justMyCode": false
+        },
+        {
             "name": "Visualization",
             "type": "python",
             "request": "launch",
