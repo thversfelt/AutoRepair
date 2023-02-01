@@ -2,87 +2,57 @@ import pickle
 import statistics
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 
-results_files_and_labels = {
-    "prioritized_test_suite_cutoff_25_number_of_faults_2.pkl": ("Prioritized (cutoff: 25)", "red"),
-    "prioritized_test_suite_cutoff_50_number_of_faults_2.pkl": ("Prioritized (cutoff: 50)", "blue"),
-    "prioritized_test_suite_cutoff_75_number_of_faults_2.pkl": ("Prioritized (cutoff: 75)", "green"),
-}
+from autorepair.ariel import Ariel
 
-budget = 15
-repetitions = 20
 
-for results_file, (label, color) in results_files_and_labels.items():
-    with open(results_file, "rb") as file:
-        results = pickle.load(file)
-    
-    number_of_failing_tests_per_iteration = {}
-    exectution_time_per_iteration = {}
-    
-    for iteration in range(budget):
-        number_of_failing_tests_per_iteration[iteration] = []
-        exectution_time_per_iteration[iteration] = []
+abstractions = ["prioritized"]
+cutoffs = [50]
+budget = 600
+
+for abstraction in abstractions:
+    for cutoff in cutoffs:
         
-        for repetition in results:
-            archives = results[repetition]
-            
-            if iteration in archives:
-                archive = archives[iteration]
+        filename = f"{abstraction}_test_suite_cutoff_{cutoff}_number_of_faults_2.pkl"
+        with open(filename, "rb") as file:
+            repetitions = pickle.load(file)
+        
+        number_of_failing_tests_per_iteration = {}
+        execution_times_per_iteration = {}
+        
+        for repetition_idx, checkpoints in repetitions.items():
+            for iteration_idx, (execution_time, archive) in enumerate(checkpoints.items()):
                 min_number_of_failing_tests = np.inf
-                min_execution_time = 0
-                
-                for individual in archive:
-                    evaluation_results = archive[individual]["evaluation_results"]
-                    validation_results = archive[individual]["validation_results"]
-                    
-                    number_of_failing_tests = 0
-                    execution_time = 0
-                    
-                    for test_id in evaluation_results:
-                        metrics_scores = evaluation_results[test_id]["metrics_scores"]
-                        execution_time += evaluation_results[test_id]["execution_time"]
-                        
-                        if  np.any(metrics_scores < 0):
-                            number_of_failing_tests += 1
-                    
-                    if validation_results is not None:
-                        for test_id in validation_results:
-                            metrics_scores = validation_results[test_id]["metrics_scores"]
-                            if  np.any(metrics_scores < 0):
-                                number_of_failing_tests += 1
-                    
-                    if number_of_failing_tests < min_number_of_failing_tests:
-                        min_number_of_failing_tests = number_of_failing_tests
-                        min_execution_time = execution_time
-                    
-                number_of_failing_tests_per_iteration[iteration].append(min_number_of_failing_tests)
-                exectution_time_per_iteration[iteration].append(min_execution_time)
-            else:
-                previous_min_number_of_failing_tests = number_of_failing_tests_per_iteration[iteration - 1][repetition]
-                number_of_failing_tests_per_iteration[iteration].append(previous_min_number_of_failing_tests)
-                
-                previous_min_execution_time = exectution_time_per_iteration[iteration - 1][repetition]
-                exectution_time_per_iteration[iteration].append(previous_min_execution_time)
+                for results in archive.values():
+                    number_of_failing_evaluation_tests = len(Ariel.failing_tests_ids(results["evaluation_results"]))
+                    number_of_failing_validation_tests = len(Ariel.failing_tests_ids(results["validation_results"]))
+                    number_of_failing_tests = number_of_failing_evaluation_tests + number_of_failing_validation_tests
+                    min_number_of_failing_tests = min(min_number_of_failing_tests, number_of_failing_tests)
+                number_of_failing_tests_per_iteration.setdefault(iteration_idx, []).append(min_number_of_failing_tests)
+                execution_times_per_iteration.setdefault(iteration_idx, []).append(execution_time)
+        
+        # Compute the average of the execution times per iteration
+        execution_times_avg = np.array([sum(vals)/len(vals) for vals in execution_times_per_iteration.values()])
 
-    # Extract the keys and values from the data dict
-    x = exectution_time_per_iteration.values()
-    x_avg = np.array([sum(vals)/len(vals) for vals in x])
-    x_cum = np.cumsum(x_avg)
+        # Compute the average of the number of failing tests per iteration
+        number_of_failing_tests_avg = np.array([sum(vals)/len(vals) for vals in number_of_failing_tests_per_iteration.values()])
 
-    # Calculate the average and standard error for each column
-    y = number_of_failing_tests_per_iteration.values()
-    y_avg = np.array([sum(vals)/len(vals) for vals in y])
-    y_err = np.array([statistics.stdev(vals)/np.sqrt(len(vals)) for vals in y])
-
-    # Plot the data as a line with error bars
-    plt.plot(x_cum, y_avg, color=color, label=label)
-    plt.fill_between(x_cum, y_avg-y_err, y_avg+y_err, alpha=0.15, edgecolor=color, facecolor=color)
+        # Choose a random color for the plot
+        color = np.random.choice(list(matplotlib.colors.CSS4_COLORS.keys()))
+        plt.plot(execution_times_avg, number_of_failing_tests_avg, color=color, label=abstraction)
+        plt.boxplot(
+            list(number_of_failing_tests_per_iteration.values()), 
+            positions=execution_times_avg, widths=10, showfliers=False, patch_artist=True, 
+            boxprops=dict(facecolor=color, color=color), medianprops=dict(color=color), 
+            whiskerprops=dict(color=color), capprops=dict(color=color)
+        )
 
 plt.grid(linestyle='--')
-#plt.xlim(0, budget-1)
-plt.xlabel("Iteration")
+plt.xlim(0, budget)
+plt.xlabel("Execution time (s)")
 plt.ylabel("Number of failing tests")
-plt.title(f"Number of failing tests per iteration\n(number of faults: 3, budget: {budget}, repetitions: {repetitions})")
+plt.title(f"Number of failing tests vs execution time for different abstractions")
 plt.legend()
 plt.show()
 print("")

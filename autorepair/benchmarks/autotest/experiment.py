@@ -28,7 +28,7 @@ if __name__ == '__main__':
                   15662, 2645]
     
     # COMMENT TO RUN THE EXPERIMENTS - BELOW
-    #scenes_ids = scenes_ids[:10]
+    #scenes_ids = scenes_ids[:20]
     # COMMENT TO RUN THE EXPERIMENTS - ABOVE
     
     scenes = load_scenes(scenes_ids, dataset_name)
@@ -45,10 +45,10 @@ if __name__ == '__main__':
     repetitions = 20
     
     # COMMENT TO RUN THE EXPERIMENTS - BELOW
-    #abstractions = ["prioritized", "random", "failing"]
-    #cutoffs = [2, 4, 8]
-    #budget = 10 # seconds
-    #repetitions = 3
+    abstractions = ["prioritized", "random", "failing"]
+    cutoffs = [50]
+    budget = 600 # seconds
+    repetitions = 2
     # COMMENT TO RUN THE EXPERIMENTS - ABOVE
 
     # Create a progress bar to show the progress of the experiments.
@@ -59,15 +59,14 @@ if __name__ == '__main__':
      
             checkpoints = {}
             for repetition in range(repetitions):
-                
-                evaluate_failing_tests = False
-
                 if abstraction == "prioritized":
                     evaluation_tests_ids = prioritized_scenes_ids[:cutoff]
+                    evaluate_failing_tests = False
                 elif abstraction == "random":
                     random_scenes_ids = copy.deepcopy(scenes_ids)
                     random.shuffle(random_scenes_ids)
                     evaluation_tests_ids = random_scenes_ids[:cutoff]
+                    evaluate_failing_tests = False
                 elif abstraction == "failing" and cutoff == cutoffs[0]:
                     evaluation_tests_ids = scenes_ids
                     evaluate_failing_tests = True

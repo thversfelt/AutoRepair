@@ -1,5 +1,6 @@
 import ast
 import random
+import time
 import numpy as np
 import copy
 
@@ -13,26 +14,32 @@ class Ariel:
     @staticmethod
     def repair(rule_set: ast.Module, test_suite: TestSuite, evaluation_tests_ids: List[int], budget: int, validate: bool=False, evaluate_failing_tests: bool=False) -> None:
         
+        evaluation_start_time = time.time()
         evaluation_results = test_suite.evaluate(rule_set, evaluation_tests_ids)
-        evaluation_tests_ids = Ariel.failing_tests_ids(evaluation_results) if evaluate_failing_tests else evaluation_tests_ids
-        execution_time = Ariel.execution_time(evaluation_results)
-        archive = Ariel.update_archive({}, rule_set, evaluation_results, test_suite, validate)
-        checkpoints = {execution_time: copy.deepcopy(archive)}
+        evaluation_time = time.time() - evaluation_start_time
         
-        while not Ariel.solution_found(archive) and execution_time < budget:
-            parent_rule_set, parent_evaluation_results = Ariel.select_parent(archive)
+        evaluation_tests_ids = Ariel.failing_tests_ids(evaluation_results) if evaluate_failing_tests else evaluation_tests_ids
+        
+        archive = Ariel.update_archive({}, rule_set, test_suite, evaluation_results)
+        checkpoint = copy.deepcopy(archive)
+        checkpoints = {evaluation_time: checkpoint}
+        
+        while not Ariel.solution_found(archive) and evaluation_time < budget:
+            parent, parent_evaluation_results = Ariel.select_parent(archive)
             
-            offspring_rule_set = Ariel.generate_patch(parent_rule_set, parent_evaluation_results)
-            offspring_evaluation_results = test_suite.evaluate(offspring_rule_set, evaluation_tests_ids)
-            execution_time += Ariel.execution_time(offspring_evaluation_results)
+            offspring = Ariel.generate_patch(parent, parent_evaluation_results)
+            evaluation_start_time = time.time()
+            offspring_evaluation_results = test_suite.evaluate(offspring, evaluation_tests_ids)
+            evaluation_time += time.time() - evaluation_start_time
             
-            archive = Ariel.update_archive(archive, offspring_rule_set, offspring_evaluation_results, test_suite, validate)
-            checkpoints[execution_time] = copy.deepcopy(archive)
-
+            archive = Ariel.update_archive(archive, offspring, test_suite, offspring_evaluation_results)
+            checkpoint = copy.deepcopy(archive)
+            checkpoints[evaluation_time] = checkpoint
+        
         return checkpoints
     
     @staticmethod
-    def update_archive(archive: Dict[ast.Module, dict], rule_set: ast.Module, evaluation_results: dict, test_suite: TestSuite, validate: bool) -> dict:
+    def update_archive(archive: Dict[ast.Module, dict], rule_set: ast.Module, test_suite: TestSuite, evaluation_results: dict) -> dict:
         """Removes dominated elitists from the archive and adds the new individual if it is not dominated."""
         metrics_scores = np.minimum.reduce([evaluation_results[test_id]["metrics_scores"] for test_id in evaluation_results])
 
@@ -58,16 +65,15 @@ class Ariel:
         for elitist in dominated_elitists:
             archive.pop(elitist)
         
-        # Validate the individual if requested.
         evaluation_tests_ids = [test_id for test_id in evaluation_results]
-        validation_results = test_suite.validate(rule_set, evaluation_tests_ids) if validate else None
+        validation_results = test_suite.validate(rule_set, evaluation_tests_ids)
         
         # Add the individual to the archive.
         archive[rule_set] = {
             "evaluation_results": evaluation_results,
             "validation_results": validation_results
         }
-
+        
         return archive
     
     @staticmethod
@@ -179,17 +185,10 @@ class Ariel:
             return solution_found
     
     @staticmethod
-    def failing_tests_ids(evaluation_results: dict = None) -> List[int]:
+    def failing_tests_ids(results: dict = None) -> List[int]:
         failing_tests_ids = []
-        for test_id, test_evaluation_results in evaluation_results.items():
-            metrics_scores = test_evaluation_results["metrics_scores"]
+        for test_id, test_results in results.items():
+            metrics_scores = test_results["metrics_scores"]
             if np.any(metrics_scores < 0):
                 failing_tests_ids.append(test_id)
         return failing_tests_ids
-    
-    @staticmethod
-    def execution_time(evaluation_results: dict = None) -> float:
-        earliest_start_time = np.minimum.reduce([evaluation_results[test_id]["execution_start_time"] for test_id in evaluation_results])
-        latest_end_time = np.maximum.reduce([evaluation_results[test_id]["execution_end_time"] for test_id in evaluation_results])
-        execution_time = latest_end_time - earliest_start_time
-        return execution_time
