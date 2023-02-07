@@ -3,18 +3,23 @@ import statistics
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
+import math
 
 from autorepair.ariel import Ariel
 
 
-abstractions = ["prioritized"]
-cutoffs = [50]
+abstractions = ["failing", "prioritized", "random"]
+cutoffs = [47, 56, 65]
+number_of_faults = 2
 budget = 600
 
-for abstraction in abstractions:
-    for cutoff in cutoffs:
+for cutoff in cutoffs:
+    for abstraction in abstractions:
+        # Only visualize the failing test suite for the first cutoff, as it is the same for all cutoffs.
+        if abstraction == "failing" and cutoff != cutoffs[0]:
+            continue
         
-        filename = f"{abstraction}_test_suite_cutoff_{cutoff}_number_of_faults_2.pkl"
+        filename = f"{abstraction}_test_suite_cutoff_{cutoff}_number_of_faults_{number_of_faults}.pkl"
         with open(filename, "rb") as file:
             repetitions = pickle.load(file)
         
@@ -40,20 +45,20 @@ for abstraction in abstractions:
 
         # Choose a random color for the plot
         color = np.random.choice(list(matplotlib.colors.CSS4_COLORS.keys()))
-        plt.plot(execution_times_avg, number_of_failing_tests_avg, color=color, label=abstraction)
+        plt.plot(execution_times_avg, number_of_failing_tests_avg, color=color, label=f"{abstraction} (cutoff={cutoff})")
         plt.boxplot(
             list(number_of_failing_tests_per_iteration.values()), 
-            positions=execution_times_avg, widths=10, showfliers=False, patch_artist=True, 
+            positions=execution_times_avg, widths=0.05*budget, showfliers=False, patch_artist=True, 
             boxprops=dict(facecolor=color, color=color), medianprops=dict(color=color), 
             whiskerprops=dict(color=color), capprops=dict(color=color)
         )
 
-plt.grid(linestyle='--')
-plt.xlim(0, budget)
-plt.xlabel("Execution time (s)")
-plt.ylabel("Number of failing tests")
-plt.title(f"Number of failing tests vs execution time for different abstractions")
-plt.legend()
-plt.show()
-print("")
+    plt.grid(linestyle='--')
+
+    plt.xlabel("Execution time (s)")
+    plt.ylabel("Number of failing tests")
+    plt.title(f"Number of failing tests vs execution time for different abstractions")
+    plt.legend()
+    plt.show()
+    print("")
                         

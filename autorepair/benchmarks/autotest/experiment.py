@@ -5,11 +5,12 @@ import random
 import autotest
 import pickle
 import copy
+import math
 
 
 from autotest.scenes_loader import load_scenes
 from autotest.evaluation.metrics import AdaptiveCruiseControlMetric, TrafficLightManagementMetric
-from autotest.autodrive import faulty_rule_set
+from autotest.autodrive import rule_set, faulty_rule_set
 from autorepair.ariel import Ariel
 from autorepair.benchmarks.autotest.test_suites import AutoTestSuite
 from featurizer import featurize_scenes
@@ -26,37 +27,52 @@ if __name__ == '__main__':
                   3479, 3058, 4412, 14869, 11153, 10085, 2772, 9086, 14435, 6215, 997, 10753, 15039, 15341, 6182, 10104, 
                   983, 85, 2718, 3288, 429, 10121, 13506, 762, 7360, 7477, 5725, 2820, 624, 9084, 1514, 9064, 10774, 
                   15662, 2645]
-    
+    corrupt_scenes_ids = [13945, 4772, 6967, 14435, 10104, 9084]
+    scenes_ids = [scene_id for scene_id in scenes_ids if scene_id not in corrupt_scenes_ids]
+
     # COMMENT TO RUN THE EXPERIMENTS - BELOW
     #scenes_ids = scenes_ids[:20]
     # COMMENT TO RUN THE EXPERIMENTS - ABOVE
     
     scenes = load_scenes(scenes_ids, dataset_name)
+    metrics = [AdaptiveCruiseControlMetric(), TrafficLightManagementMetric()]
+    test_suite = AutoTestSuite(scenes, metrics)
+    
+    #correct_rule_set = ast.parse(inspect.getsource(autotest.autodrive.rule_set))
+    #for i in range(3):
+    #    correct_results = test_suite.run(correct_rule_set, scenes_ids)
+    #    failing_scenes_ids = Ariel.failing_tests_ids(correct_results)
+    #    print(failing_scenes_ids)
+    
     scenes_features = featurize_scenes(scenes)
     prioritized_scenes_ids = prioritize_scenes(scenes_features)
-    metrics = [AdaptiveCruiseControlMetric(), TrafficLightManagementMetric()]
     
     faulty_rule_set = ast.parse(inspect.getsource(autotest.autodrive.faulty_rule_set))
     number_of_faults = 2
-    
+
     abstractions = ["prioritized", "random", "failing"]
-    cutoffs = [25, 50, 75]
-    budget = 600 # seconds
-    repetitions = 20
+    cutoff_ratios = [0.5, 0.6, 0.7, 0.8]
+    cutoffs = [math.floor(cutoff_ratio * len(scenes_ids)) for cutoff_ratio in cutoff_ratios]
+    budget = 600 # 600 seconds
+    repetitions = 10 # 10 repetitions
     
     # COMMENT TO RUN THE EXPERIMENTS - BELOW
-    abstractions = ["prioritized", "random", "failing"]
-    cutoffs = [50]
-    budget = 600 # seconds
-    repetitions = 2
+    #abstractions = ["prioritized", "random", "failing"]
+    #cutoffs = [50]
+    #budget = 600 # seconds
+    #repetitions = 20
     # COMMENT TO RUN THE EXPERIMENTS - ABOVE
 
     # Create a progress bar to show the progress of the experiments.
-    progress_bar = tqdm(desc=f'Running experiments', total=140)
+    total_number_of_repetitions = ((len(abstractions) - 1) * len(cutoffs) + 1) * repetitions
+    progress_bar = tqdm(desc=f'Running repetitions', total=total_number_of_repetitions)
 
     for cutoff in cutoffs:
         for abstraction in abstractions:
-     
+            # Only run the failing test suite for the first cutoff, as it is the same for all cutoffs.
+            if abstraction == "failing" and cutoff != cutoffs[0]:
+                continue
+            
             checkpoints = {}
             for repetition in range(repetitions):
                 if abstraction == "prioritized":
@@ -67,13 +83,12 @@ if __name__ == '__main__':
                     random.shuffle(random_scenes_ids)
                     evaluation_tests_ids = random_scenes_ids[:cutoff]
                     evaluate_failing_tests = False
-                elif abstraction == "failing" and cutoff == cutoffs[0]:
+                elif abstraction == "failing":
                     evaluation_tests_ids = scenes_ids
                     evaluate_failing_tests = True
                 else:
                     continue
                 
-                test_suite = AutoTestSuite(scenes, metrics)
                 checkpoints[repetition] = Ariel.repair(faulty_rule_set, test_suite, evaluation_tests_ids, budget, validate=True, evaluate_failing_tests=evaluate_failing_tests)
                 progress_bar.update(n=1)
                 
