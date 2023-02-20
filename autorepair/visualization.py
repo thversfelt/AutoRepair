@@ -7,7 +7,7 @@ import math
 
 from autorepair.ariel import Ariel
 
-
+abstractions_colors = {"failing": "red", "prioritized": "blue", "random": "green"}
 abstractions = ["failing", "prioritized", "random"]
 cutoffs = [47, 56, 65]
 number_of_faults = 2
@@ -40,25 +40,26 @@ for cutoff in cutoffs:
         # Compute the average of the execution times per iteration
         execution_times_avg = np.array([sum(vals)/len(vals) for vals in execution_times_per_iteration.values()])
 
-        # Compute the average of the number of failing tests per iteration
+        # Compute the average of the number of failing tests per iterationssss
         number_of_failing_tests_avg = np.array([sum(vals)/len(vals) for vals in number_of_failing_tests_per_iteration.values()])
 
         # Choose a random color for the plot
-        color = np.random.choice(list(matplotlib.colors.CSS4_COLORS.keys()))
-        plt.plot(execution_times_avg, number_of_failing_tests_avg, color=color, label=f"{abstraction} (cutoff={cutoff})")
-        plt.boxplot(
-            list(number_of_failing_tests_per_iteration.values()), 
-            positions=execution_times_avg, widths=0.05*budget, showfliers=False, patch_artist=True, 
-            boxprops=dict(facecolor=color, color=color), medianprops=dict(color=color), 
-            whiskerprops=dict(color=color), capprops=dict(color=color)
-        )
+        color = abstractions_colors[abstraction]
+        #plt.plot(execution_times_avg, number_of_failing_tests_avg, color=color, label=f"{abstraction} (cutoff={cutoff})")
+        plt.boxplot(list(number_of_failing_tests_per_iteration.values()), positions=execution_times_avg, widths=10)
 
-    plt.grid(linestyle='--')
-
-    plt.xlabel("Execution time (s)")
-    plt.ylabel("Number of failing tests")
-    plt.title(f"Number of failing tests vs execution time for different abstractions")
-    plt.legend()
-    plt.show()
-    print("")
+        plt.grid(linestyle='--', color='lightgray', linewidth=0.5)
+        plt.xlim([0, budget])
+        
+        plt.gca().set(xticks=np.arange(0, budget+1, 60), xticklabels=np.arange(0, budget+1, 60))
+        
+        #plt.gca().xaxis.set_major_locator(plt.MultipleLocator(60))
+        
+        
+        plt.xlabel("Execution time (s)")
+        plt.ylabel("Number of failing tests")
+        plt.title(f"Number of failing tests vs execution time for different abstractions")
+        plt.legend()
+        plt.show()
+        print("")
                         
