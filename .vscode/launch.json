@@ -2,10 +2,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "AutoTest Example",
+            "name": "Ariel Example",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/autotest/example.py",
+            "program": "${workspaceFolder}/autorepair/benchmarks/autotest/example.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceRoot}",
             "env": {
@@ -14,10 +14,22 @@
             "justMyCode": false
         },
         {
-            "name": "Ariel Example",
+            "name": "Experiment",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/pyariel/example.py",
+            "program": "${workspaceFolder}/autorepair/benchmarks/autotest/experiment.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceRoot}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Visualization",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/autorepair/visualization.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceRoot}",
             "env": {
