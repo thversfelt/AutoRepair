@@ -4,7 +4,7 @@ import time
 import numpy as np
 import copy
 
-from autorepair.benchmarks.test_suite import TestSuite
+from autorepair.testsuites.test_suites import TestSuite
 from autorepair.utilities import select
 from autorepair.mutations import modify, shift
 from typing import Dict, List

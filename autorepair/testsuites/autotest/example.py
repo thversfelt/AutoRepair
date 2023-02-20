@@ -13,10 +13,9 @@ from autotest.scenes_loader import load_scenes
 from autotest.evaluation.metrics import AdaptiveCruiseControlMetric, TrafficLightManagementMetric
 from autotest.autodrive import faulty_rule_set
 from autorepair.ariel import Ariel
-from autorepair.benchmarks.autotest.test_suites import AutoTestSuite
+from autorepair.testsuites.test_suites import TestSuite, AutoTestSuite
 from featurizer import featurize_scenes
 from prioritizer import prioritize_scenes
-from autorepair.benchmarks.test_suite import TestSuite
 from typing import List
 from tqdm import tqdm
 

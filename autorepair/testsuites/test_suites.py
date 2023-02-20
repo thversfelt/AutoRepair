@@ -1,10 +1,21 @@
 import ast
-import random
-import numpy as np
 
 from autotest.auto_test import simulate_scenes
-from autorepair.benchmarks.test_suite import TestSuite
 from typing import List
+
+
+class TestSuite:
+    def __init__(self) -> None:
+        pass
+    
+    def evaluate(self, rule_set: ast.Module, evaluation_tests_ids: List[int]) -> dict:
+        pass
+    
+    def validate(self, rule_set: ast.Module, evaluation_tests_ids: List[int]) -> dict:
+        pass
+    
+    def run(self, rule_set: ast.Module, tests_ids: List[int]) -> dict:
+        pass
 
 class AutoTestSuite(TestSuite):
     def __init__(self, tests, metrics) -> None:

@@ -1,11 +1,11 @@
 from typing import Dict
+from autotest.scene import Scene
+
 import numpy as np
 import l5kit.data.proto.road_network_pb2 as road_network
 import pickle
 
-from autotest.scene import Scene
 
-  
 def featurize_scenes(scenes: Dict[int, Scene]):
     scenes_features = {}
     features_names = [
