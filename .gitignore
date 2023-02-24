@@ -220,8 +220,5 @@ benchmark/pretrained/
 # HTML files
 *.html
 
-# Pickle files
-*.pkl
-
 # Temporary folder
 tmp/
