@@ -222,3 +222,6 @@ benchmark/pretrained/
 
 # Pickle files
 *.pkl
+
+# Temporary folder
+tmp/

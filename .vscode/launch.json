@@ -5,7 +5,7 @@
             "name": "Ariel Example",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/autorepair/benchmarks/autotest/example.py",
+            "program": "${workspaceFolder}/autorepair/example.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceRoot}",
             "env": {

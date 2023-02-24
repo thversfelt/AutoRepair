@@ -1,0 +1,2 @@
+-e git+https://github.com/thversfelt/AutoTest.git#egg=autotest
+pymoo==0.6.0.1
