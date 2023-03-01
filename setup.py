@@ -10,6 +10,6 @@ setup(
         'autotest'
     ],
     dependency_links=[
-        'git+https://github.com/thversfelt/AutoTest#egg=autotest'
+        'git+https://github.com/thversfelt/AutoTest.git#egg=autotest'
     ]
 )
