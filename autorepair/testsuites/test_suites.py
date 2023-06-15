@@ -18,9 +18,10 @@ class TestSuite:
         pass
 
 class AutoTestSuite(TestSuite):
-    def __init__(self, tests, metrics) -> None:
+    def __init__(self, tests, metrics, parallelize) -> None:
         self.tests = tests
         self.metrics = metrics
+        self.parallelize = parallelize
 
     def evaluate(self, rule_set: ast.Module, evaluation_tests_ids: List[int]) -> dict:
         return self.run(rule_set, evaluation_tests_ids)
@@ -31,4 +32,4 @@ class AutoTestSuite(TestSuite):
 
     def run(self, rule_set: ast.Module, tests_ids: List[int]) -> dict:
         tests = [self.tests[test_id] for test_id in tests_ids]
-        return simulate_scenes(rule_set, tests, self.metrics)
+        return simulate_scenes(rule_set, tests, self.metrics, parallelize=self.parallelize)

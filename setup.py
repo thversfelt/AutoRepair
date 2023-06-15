@@ -1,15 +1,10 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
     name='autorepair',
-    version='0.1.3',
-    packages=find_packages(),
-    include_package_data=True,
+    version='1.0',
     install_requires=[
-        'pymoo==0.6.0.1',
-        'autotest'
+        'pymoo==0.6.0.1'
     ],
-    dependency_links=[
-        'git+https://github.com/thversfelt/AutoTest.git#egg=autotest'
-    ]
+    packages=['autorepair']
 )

@@ -25,10 +25,12 @@ def featurize_scenes(scenes: Dict[int, Scene]):
 
     # Calculate the features values for each scene.
     for scene_id, scene in scenes.items():
+        number_of_frames = len(scene.ego.replay_positions)
+
         # Initialize the scene features dictionary.
         scenes_features[scene_id] = {}
         scenes_features[scene_id]["Number of Agents"] = len(scene.agents)
-        scenes_features[scene_id]["Direct Distance"] = np.linalg.norm(scene.ego.replay_position(0) - scene.ego.replay_position(scene.number_of_frames - 1))
+        scenes_features[scene_id]["Direct Distance"] = np.linalg.norm(scene.ego.replay_positions[0] - scene.ego.replay_positions[number_of_frames - 1])
         scenes_features[scene_id]["Road Distance"] = 0
         scenes_features[scene_id]["Number of Straight Segments"] = 0
         scenes_features[scene_id]["Number of Left Turns"] = 0
