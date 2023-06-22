@@ -19,14 +19,11 @@ if __name__ == '__main__':
     dataset_path = "../autotest/autotest/data/validate/validate.zarr"
     map_path = "../autotest/autotest/data/map/map.pb"
     loaded_map_path = "../autotest/autotest/data/map/map.pkl"
-    metadata_path = "../autotest/autotest/data/map/meta.json"
-
-    parallelize = False
 
     scenes_ids = random.sample(range(0, 15631), 100)
     dataset = ChunkedDataset(dataset_path).open()
     map = open_map(loaded_map_path) # OF load_map(map_path) ALS de map nog niet is opgeslagen
-    scenes = load_scenes(scenes_ids, dataset, map, parallelize=parallelize)
+    scenes = load_scenes(scenes_ids, dataset, map, parallelize=True)
     
     #scenes_features = featurize_scenes(scenes)
     #prioritized_scenes_ids = prioritize_scenes(scenes_features)
@@ -38,7 +35,7 @@ if __name__ == '__main__':
     number_of_faults = 1
     budget = 180 # [s]
 
-    test_suite = AutoTestSuite(scenes, metrics, parallelize)
+    test_suite = AutoTestSuite(scenes, metrics, parallelize=False)
     checkpoints = Ariel.repair(faulty_rule_set, test_suite, scenes_ids, budget)
     last_checkpoint = list(checkpoints.keys())[-1]
     solution = list(checkpoints[last_checkpoint].keys())[0]
