@@ -2,7 +2,7 @@ import ast
 import random
 
 from typing import List, Tuple
-from autorepair.utilities import find_statement_reference, order_of_magnitude
+from autorepair.utilities import find_dominated_statements, find_dominating_statements, find_statement_reference, order_of_magnitude
 
 
 INVERSE_RELATIONAL_OPERATOR = {
@@ -50,11 +50,20 @@ def modify_threshold_value(threshold: ast.Num) -> None:
     threshold.value = random.gauss(threshold.value, order_of_magnitude(threshold.value))
 
 def shift(individual: ast.Module, path: List[str], statement: str) -> Tuple[List[str], str]:
-    target_statement = random.choice([path_statement for path_statement in path if path_statement != statement])
-    
-    target_statement_reference = find_statement_reference(individual, target_statement)
     statement_reference = find_statement_reference(individual, statement)
+
+    # Find the statements that are dominated by or dominate the given statement.
+    dominating_statements = find_dominating_statements(individual, statement_reference)
+    dominated_statements = find_dominated_statements(individual, statement_reference)
     
+    # Combine the dominating and dominated statements dictionaries.
+    dominating_and_dominated_statements = {**dominating_statements, **dominated_statements}
+
+    # Choose a statement to swap with the given statement.
+    target_statement = random.choice(list(dominating_and_dominated_statements.items()))
+    target_statement_test = target_statement[0]
+    target_statement_reference = target_statement[1]
+
     target_statement_test = target_statement_reference.test
     target_statement_body = target_statement_reference.body
     

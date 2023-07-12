@@ -170,7 +170,7 @@ class Ariel:
     
     @staticmethod
     def apply_mutation(individual: ast.Module, path: List[str], statement: str) -> str:
-        mutate = random.choice([modify, shift]) if len(path) > 1 else modify
+        mutate = random.choice([modify, shift])
         mutated_path, mutated_statement = mutate(individual, path, statement)
         return mutated_path, mutated_statement
     

@@ -36,6 +36,18 @@
                 "PYTHONPATH": "${workspaceRoot}"
             },
             "justMyCode": false
+        },
+        {
+            "name": "Test Mutations",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/autorepair/test_mutations.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceRoot}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "justMyCode": false
         }
     ]
 }
